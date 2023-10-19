@@ -1,0 +1,292 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>链接与库 - Jun's Blog</title><meta name=theme-color><meta name=description content="虚拟内存 我们首先要对平时所说的内存要有一个清楚的认知，那就是我们所谈的实际上都是虚拟内存，不是操纵真实的物理内存。在没有安装操作系统的裸机上"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="链接与库"><meta itemprop=description content="虚拟内存 我们首先要对平时所说的内存要有一个清楚的认知，那就是我们所谈的实际上都是虚拟内存，不是操纵真实的物理内存。在没有安装操作系统的裸机上"><meta itemprop=datePublished content="2023-03-03T16:32:13+08:00"><meta itemprop=dateModified content="2023-03-03T16:32:13+08:00"><meta itemprop=wordCount content="4015"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="链接与库"><meta name=twitter:description content="虚拟内存 我们首先要对平时所说的内存要有一个清楚的认知，那就是我们所谈的实际上都是虚拟内存，不是操纵真实的物理内存。在没有安装操作系统的裸机上"><link rel=canonical href=https://www.junz.org/post/linker_and_library/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">链接与库</h1><div class="text-sm antialiased opacity-60"><time>Mar 3, 2023</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><h2 id=虚拟内存>虚拟内存</h2><p>我们首先要对平时所说的内存要有一个清楚的认知，那就是我们所谈的实际上都是虚拟内存，不是操纵真实的物理内存。在没有安装操作系统的裸机上，我们所面对的内存就是物理内存。而随着计算机的发展，一个称为“操作系统”的程序被安装到计算机上，它接管了所有硬件资源，并向我们提供了一个个抽象层。我们作为软件开发人员，只需要与操作系统的抽象层接触，这简化了很多由于硬件不一致带来的麻烦。</p><p>而虚拟内存就是操作系统对于实际的物理内存向我们提供的抽象层。现代操作系统多是多任务处理系统，而这一个个“任务”，一般称为进程，都有自己独立的进程地址空间。换句话说，每个进程看待虚拟内存都会认为自己拥有所有的空间（当然它会认为低地址的一部分归内核管），也就是整个系统上好像只有它一个进程。如果他要和其它进程通信，可以使用套接字（socket）等方式。说到这里可以领会到操作系统和计算机网络设计的巧妙性。套接字被设计为两个进程通信的方式，不管是同一台机器上的两个进程还是一个网络中的两个机器的两个进程，都可以用这同一抽象的概念进行通讯，屏蔽了大量具体细节。</p><h2 id=c-和-c-的编译模型>C 和 C++ 的编译模型</h2><p>这里主要讨论 C 语言的情况，C++ 沿用了 C 语言的模型，没有大的差别。</p><p>对于 C 编译器来说，它可以独立编译一个单独的 <code>.c</code> 文件，产物为 <code>.o</code> 文件。最后我们通过链接器将他们链接成一个可执行文件。</p><p>而这中间就产生了一个问题，如果每个 <code>.c</code> 文件都是单独编译的，那它又怎么知道其他文件的信息呢？比如说 A 文件中的一个函数需要调用 B 文件中的另一个函数。</p><p>举个具体的例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=c1>// foo.c
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>int</span> <span class=nf>foo</span><span class=p>(</span><span class=kt>int</span> <span class=n>i</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>i</span> <span class=o>+</span> <span class=mi>42</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=c1>// bar.c
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>int</span> <span class=nf>bar</span><span class=p>(</span><span class=kt>int</span> <span class=n>i</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nf>foo</span><span class=p>(</span><span class=n>i</span><span class=p>)</span> <span class=o>+</span> <span class=mi>24</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>这里 <code>bar.c</code> 中的一个函数引用了 <code>foo.c</code> 中的一个函数，那我们又如何告诉编译器有关函数 <code>foo</code> 的信息呢？最终的设计就是<strong>假装我们有这个函数</strong>。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=c1>// bar.c
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>int</span> <span class=nf>foo</span><span class=p>(</span><span class=kt>int</span> <span class=n>i</span><span class=p>);</span> <span class=c1>// 声明函数 foo，告诉编译器我们有它。
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>bar</span><span class=p>(</span><span class=kt>int</span> <span class=n>i</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nf>foo</span><span class=p>(</span><span class=n>i</span><span class=p>)</span> <span class=o>+</span> <span class=mi>24</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>而随着这些声明的信息越多，我们可以将所有的这些信息放到一个单独的文件中，再 <code>include</code> 进来，形成了<strong>头文件</strong>的形式。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=c1>// bar.c
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=cp>#include</span> <span class=cpf>&#34;foo.h&#34;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp></span><span class=kt>int</span> <span class=nf>bar</span><span class=p>(</span><span class=kt>int</span> <span class=n>i</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=nf>foo</span><span class=p>(</span><span class=n>i</span><span class=p>)</span> <span class=o>+</span> <span class=mi>24</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h2 id=elf-文件格式>ELF 文件格式</h2><p>源文件被编译器编译过后便形成了 object file，它是一个二进制文件，只有0和1。不同操作系统的 Object file 有不同格式，下面只会讨论 Linux 平台下使用的 ELF 格式。</p><p>我们将一个 <code>.c</code> 文件编译后形成的 Object file 中至少需要存在两部分信息：</p><ul><li>代码，即代表指令的二进制序列。</li><li>数据，即代表全局数据的二进制序列。</li></ul><p>在设计上，我们将具有相同属性的信息放在一起，称为一个段。而因为 ELF 文件中的数据都是二进制，所以是没办法直接区分的。为了解决这一点，我们又单独分出一个区域叫做段表，记录每个段的名称与它所占区域的映射。而为了能找到段表，我们又把一个 ELF 文件开始一部分固定长度的区域作为头部，其中每个偏移量代表的含义是固定的。利用这点可以把段表的开始位置记录在头部，于是我们便能够得到所有段的相关信息。</p><p>下面是一些比较重要的段：</p><table><thead><tr><th style=text-align:center>段名</th><th style=text-align:center>作用</th></tr></thead><tbody><tr><td style=text-align:center>.text</td><td style=text-align:center>代码</td></tr><tr><td style=text-align:center>.data</td><td style=text-align:center>已初始化的全局变量和局部静态变量</td></tr><tr><td style=text-align:center>.bss</td><td style=text-align:center>未初始化的全局变量和局部静态变量</td></tr><tr><td style=text-align:center>.rodata</td><td style=text-align:center>只读数据，如字符串常量和全局 const 变量</td></tr></tbody></table><p>我们可以通过 objdump 和 readelf 工具查看相关信息。举个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=c1>// demo.c
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>int</span> <span class=nf>foo</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>global1</span> <span class=o>=</span> <span class=mi>42</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>global2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>const</span> <span class=kt>int</span> <span class=n>global3</span> <span class=o>=</span> <span class=mi>43</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=kt>int</span> <span class=n>static1</span> <span class=o>=</span> <span class=mi>43</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>static</span> <span class=kt>int</span> <span class=n>static2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=mi>12</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>用以下命令编译：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>gcc -c demo.c
+</span></span></code></pre></td></tr></table></div></div><p>查看文件头：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>readelf -h demo.o
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>ELF Header:
+</span></span><span class=line><span class=cl>  Magic:   7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+</span></span><span class=line><span class=cl>  Class:                             ELF64
+</span></span><span class=line><span class=cl>  Data:                              2&#39;s complement, little endian
+</span></span><span class=line><span class=cl>  Version:                           1 (current)
+</span></span><span class=line><span class=cl>  OS/ABI:                            UNIX - System V
+</span></span><span class=line><span class=cl>  ABI Version:                       0
+</span></span><span class=line><span class=cl>  Type:                              REL (Relocatable file)
+</span></span><span class=line><span class=cl>  Machine:                           Advanced Micro Devices X86-64
+</span></span><span class=line><span class=cl>  Version:                           0x1
+</span></span><span class=line><span class=cl>  Entry point address:               0x0
+</span></span><span class=line><span class=cl>  Start of program headers:          0 (bytes into file)
+</span></span><span class=line><span class=cl>  Start of section headers:          640 (bytes into file)
+</span></span><span class=line><span class=cl>  Flags:                             0x0
+</span></span><span class=line><span class=cl>  Size of this header:               64 (bytes)
+</span></span><span class=line><span class=cl>  Size of program headers:           0 (bytes)
+</span></span><span class=line><span class=cl>  Number of program headers:         0
+</span></span><span class=line><span class=cl>  Size of section headers:           64 (bytes)
+</span></span><span class=line><span class=cl>  Number of section headers:         13
+</span></span><span class=line><span class=cl>  Section header string table index: 12
+</span></span></code></pre></td></tr></table></div></div><p>查看各个段的相关信息：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>objdump -h demo.o
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>Sections:
+</span></span><span class=line><span class=cl>Idx Name          Size      VMA               LMA               File off  Algn
+</span></span><span class=line><span class=cl>  0 .text         0000000f  0000000000000000  0000000000000000  00000040  2**0
+</span></span><span class=line><span class=cl>                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+</span></span><span class=line><span class=cl>  1 .data         00000008  0000000000000000  0000000000000000  00000050  2**2
+</span></span><span class=line><span class=cl>                  CONTENTS, ALLOC, LOAD, DATA
+</span></span><span class=line><span class=cl>  2 .bss          00000008  0000000000000000  0000000000000000  00000058  2**2
+</span></span><span class=line><span class=cl>                  ALLOC
+</span></span><span class=line><span class=cl>  3 .rodata       00000004  0000000000000000  0000000000000000  00000058  2**2
+</span></span><span class=line><span class=cl>                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+</span></span><span class=line><span class=cl>  4 .comment      0000002c  0000000000000000  0000000000000000  0000005c  2**0
+</span></span><span class=line><span class=cl>                  CONTENTS, READONLY
+</span></span><span class=line><span class=cl>  5 .note.GNU-stack 00000000  0000000000000000  0000000000000000  00000088  2**0
+</span></span><span class=line><span class=cl>                  CONTENTS, READONLY
+</span></span><span class=line><span class=cl>  6 .note.gnu.property 00000020  0000000000000000  0000000000000000  00000088  2**3
+</span></span><span class=line><span class=cl>                  CONTENTS, ALLOC, LOAD, READONLY, DATA
+</span></span><span class=line><span class=cl>  7 .eh_frame     00000038  0000000000000000  0000000000000000  000000a8  2**3
+</span></span><span class=line><span class=cl>                  CONTENTS, ALLOC, LOAD, RELOC, READONLY, DATA
+</span></span></code></pre></td></tr></table></div></div><p>查看代码段：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>objdump -s -d demo.o
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>Contents of section .text:
+</span></span><span class=line><span class=cl> 0000 f30f1efa 554889e5 b80c0000 005dc3    ....UH.......].
+</span></span><span class=line><span class=cl>Contents of section .data:
+</span></span><span class=line><span class=cl> 0000 2a000000 2b000000                    *...+...
+</span></span><span class=line><span class=cl>Contents of section .rodata:
+</span></span><span class=line><span class=cl> 0000 2b000000                             +...
+</span></span><span class=line><span class=cl>Contents of section .comment:
+</span></span><span class=line><span class=cl> 0000 00474343 3a202855 62756e74 75203131  .GCC: (Ubuntu 11
+</span></span><span class=line><span class=cl> 0010 2e332e30 2d317562 756e7475 317e3232  .3.0-1ubuntu1~22
+</span></span><span class=line><span class=cl> 0020 2e303429 2031312e 332e3000           .04) 11.3.0.
+</span></span><span class=line><span class=cl>Contents of section .note.gnu.property:
+</span></span><span class=line><span class=cl> 0000 04000000 10000000 05000000 474e5500  ............GNU.
+</span></span><span class=line><span class=cl> 0010 020000c0 04000000 03000000 00000000  ................
+</span></span><span class=line><span class=cl>Contents of section .eh_frame:
+</span></span><span class=line><span class=cl> 0000 14000000 00000000 017a5200 01781001  .........zR..x..
+</span></span><span class=line><span class=cl> 0010 1b0c0708 90010000 1c000000 1c000000  ................
+</span></span><span class=line><span class=cl> 0020 00000000 0f000000 00450e10 8602430d  .........E....C.
+</span></span><span class=line><span class=cl> 0030 06460c07 08000000                    .F......
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>Disassembly of section .text:
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>0000000000000000 &lt;main&gt;:
+</span></span><span class=line><span class=cl>   0:   f3 0f 1e fa             endbr64
+</span></span><span class=line><span class=cl>   4:   55                      push   %rbp
+</span></span><span class=line><span class=cl>   5:   48 89 e5                mov    %rsp,%rbp
+</span></span><span class=line><span class=cl>   8:   b8 0c 00 00 00          mov    $0xc,%eax ; 0xc 就是12，即返回12
+</span></span><span class=line><span class=cl>   d:   5d                      pop    %rbp
+</span></span><span class=line><span class=cl>   e:   c3                      ret
+</span></span></code></pre></td></tr></table></div></div><h2 id=链接与符号>链接与符号</h2><p>链接的本质就是将一个个 Object file 拼凑在一起。如果说每个 Object file 中变量和函数等都是独立的，那么这个过程非常简单。但是，实际过程中往往是这个文件引用了另一个文件的函数，我们必须解决这个问题，如果 <code>foo.c</code> 中的函数调用了一个外部函数 <code>bar()</code>，我们生成的 <code>jmp</code> 指令一定要指向正确的地址。</p><p>所以连接器的主要职责之一就是确定每个符号实际的地址。为此，每一个 ELF 文件都维护了一个符号表，用于表示所有符号的名称和它相关信息（地址，类型等）的映射。</p><p>举个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>42</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>foo</span><span class=p>(</span><span class=kt>int</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>bar</span><span class=p>()</span> <span class=p>{</span> <span class=nf>foo</span><span class=p>(</span><span class=n>i</span><span class=p>);</span> <span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>我们检查它的所有符号：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>nm demo.o
+</span></span><span class=line><span class=cl>0000000000000000 T bar
+</span></span><span class=line><span class=cl>                 U foo
+</span></span><span class=line><span class=cl>0000000000000000 D i
+</span></span></code></pre></td></tr></table></div></div><p><code>T</code> 代表代码段已定义的符号，<code>D</code> 代表数据段已定义的符号，<code>U</code> 代表未定义的符号，需要后期链接器处理。</p><h3 id=c-name-mangling>C++ Name Mangling</h3><p>因为 C++ 中有函数重载的存在，所以多个函数可以重名。如果不处理，那么便会出现符号冲突的情况。对此，C++ 编译器会将函数参数也作为表示加进符号名称中。不同的 ABI 有不同的规则，对于 Linux 使用的 Itanium ABI，将上面的例子作为 C++ 代码编译后符号情况如下：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>nm demo.o
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>0000000000000000 D i
+</span></span><span class=line><span class=cl>0000000000000000 T _Z3barv
+</span></span><span class=line><span class=cl>                 U _Z3fooi
+</span></span></code></pre></td></tr></table></div></div><p>详细规则可以查阅 Itanium ABI 文档，这里只要知道 name mangling 的存在即可。而为了使 C 代码能够正确地链接 C++ 代码，C++ 也提供了不 mangle 符号的办法：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>extern</span> <span class=s>&#34;C&#34;</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=nf>foo</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h3 id=弱符号和强符号>弱符号和强符号</h3><p>符号的类型分为强符号（strong symbol）和弱符号（weak symbol）。如果有两个符号同名，取强符号的定义，多个同名强符号会冲突报错，多个同名弱符号是未定义行为。</p><p>编译器默认函数和初始化了的全局变量为强符号，未初始化的全局变量为弱符号。GCC 也提供了一个拓展，定义任何一个符号为弱符号：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=nf>__attribute__</span><span class=p>((</span><span class=n>weak</span><span class=p>))</span> <span class=n>weak</span> <span class=o>=</span> <span class=mi>42</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>弱符号对于库十分有用，库定义的弱符号可以被用户定义的强符号覆盖，使得程序使用自定义的库函数。</p><p>比如 libcxx 中 operator new 的定义：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=c1>// Implement all new and delete operators as weak definitions
+</span></span></span><span class=line><span class=cl><span class=c1>// in this shared library, so that they can be overridden by programs
+</span></span></span><span class=line><span class=cl><span class=c1>// that define non-weak copies of the functions.
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl><span class=n>_LIBCPP_WEAK</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=o>*</span>
+</span></span><span class=line><span class=cl><span class=k>operator</span> <span class=nf>new</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>size_t</span> <span class=n>size</span><span class=p>)</span> <span class=n>_THROW_BAD_ALLOC</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=p>...</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>用户可以提供自己的 operator new 函数，覆盖自带的库函数。</p><h2 id=静态链接>静态链接</h2><p>一个静态库可以看作一组 Object file 的集合。可以用以下命令创建一个静态库：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>gcc -c foo.c
+</span></span><span class=line><span class=cl>gcc -c bar.c
+</span></span><span class=line><span class=cl>ar -rc libtest.a foo.o bar.o
+</span></span></code></pre></td></tr></table></div></div><p>其实 <code>ar</code> 本身就是将多个文件打包在一起的工具，没什么稀奇的。</p><p>将静态库与其他 object file 链接成可执行文件的细节属于连接器内部实现，这里不讨论太多，但总体思想就是将 静态库（<code>.a</code>）中所有引用到的 <code>.o</code> 文件全部合并在一起，这也是为什么静态链接的程序体积很大的原因。</p><h3 id=c-中的全局对象>C++ 中的全局对象</h3><p>我们通常认为 C 和 C++ 程序是从 <code>main</code> 开始，实际上为了程序能够正常运行，在此之前我们还需要初始化进程环境，调用全局对象构造函数等很多事情。为了实现全局对象的构造和析构，ELF 还定义了两个特殊的段：</p><ul><li><code>.init</code> 保存着进程的初始化代码，及全局对象的构造函数调用。</li><li><code>.fini</code> 保存着进程的终止代码，及全局对象的析构函数调用。</li></ul><h2 id=动态链接>动态链接</h2><p>静态链接的思路很简单也很有效，但它的最大问题就是体积太大。为此，动态链接应运而生。</p><p>动态链接的基本思想就是链接这个构成从本来的程序加载前推后到了装载时。</p><h3 id=位置无关代码>位置无关代码</h3><p>共享库的一个主要目标就是允许多个进程使用相同的库代码，从而节省硬盘和内存。一个简单的思路是预先分配一个专用的地址空间，总是将共享库加载到这一位置。然而，这对地址空间的使用率不高，还容易造成大量内存碎片。为了解决这些问题，现代操作系使用了一种称为位置无关代码（Position Dependent Code）的技巧。</p><h4 id=数据引用>数据引用</h4><p>编译器会在数据段开始的地方创建一个表，称为全局偏移量表（Global Offset Table）。这个表是一个数组，每个表项是引用的全局数据目标（函数或者全局变量）的地址。又因为数据段和代码段之间的距离总是一个常量，我们可以通过指令指针（%rip）和一个偏移量找到对应的表项。</p><p>举个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-asm data-lang=asm><span class=line><span class=cl><span class=nl>foo:</span>
+</span></span><span class=line><span class=cl>    <span class=nf>mov</span> <span class=mi>0x2008b9</span><span class=p>(</span><span class=nv>%rip</span><span class=p>),</span> <span class=nv>%rax</span> <span class=c1>; 找到 GOT 中对应表项，注意是地址。
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=nf>addl</span> <span class=no>$0x1</span><span class=p>,</span> <span class=p>(</span><span class=nv>%rax</span><span class=p>)</span> <span class=c1>; 因为是地址，所以要先解引用，再操作。
+</span></span></span></code></pre></td></tr></table></div></div><p>等价的 C 代码为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=o>%</span><span class=n>rax</span> <span class=o>=</span> <span class=n>GOT</span><span class=p>[</span><span class=mi>3</span><span class=p>];</span> <span class=c1>// GOT[3] 保存的就是该全局变量实际的地址。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=o>*</span><span class=n>rax</span> <span class=o>+=</span> <span class=mi>1</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=代码引用>代码引用</h4><p>假设程序调用了一个由共享库定义的函数，编译器无法预测这个函数实际的地址，因为它可以被加载到任意位置。为了解决这个问题，我们使用了一种称为 Lazy Binding 的技术，将地址的绑定推迟到第一次调用的时候。</p><p>Lazy Binding 通过全局偏移量表（Global Offset Table）和过程链接表（Procedurev Linkage Table）共同实现。过程链接表 PLT 也是一个数组，它像一个代理，它的表项负责调用实际被调用的函数。GOT 正如上面所提到的那样，保存着被调用函数的实际地址（注意它需要在运行时被解析）。</p><p>举一个例子：</p><ol><li>当用户程序第一次调用被定义在共享库中的函数 <code>foo</code> 时，会进入对应的 <code>PLT</code> 表项中。该 <code>PLT</code> 表项是一个 <code>jmp</code> 指令，会跳转到对应 <code>GOT</code> 表项中所定义的地址。</li><li>因为这是第一次调用，<code>GOT</code> 表项并不是函数 <code>foo</code> 真正的地址，而是之前 <code>jmp</code> 指令的下一个地址。在这个地址上的指令是一条 <code>push</code> 指令，代表函数 <code>foo</code> 的 ID。接着往下执行，又是一条 <code>jmp</code> 指令，这次会跳转到 PLT[0] 上，也就是调用动态连接器。</li><li>动态连接器找到函数 <code>foo</code> 的实际位置，重写其对应的 <code>GOT</code> 表项。</li><li>自此，以后所有调用经过步骤1便可跳转到对应位置。</li></ol><h3 id=符号可见性>符号可见性</h3><p>按照原本的链接模型，共享库中所有的符号都应该是外部公开可以被访问的。但这个设计明显存在很多问题，丢失了良好的封装性只是一方面，最重要的是，当符号的数量非常大时，比如一些滥用模板的 C++ 库（没错我说的就是 boost），会导致加载时间大大增加。</p><p>编译器为此提供了一个命令行参数，可以把所有的符号都外部默认不可见。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>-fvisibility=hidden
+</span></span></code></pre></td></tr></table></div></div><p>接着我们可以用一个 GCC 提供的拓展来标记我们需要导出的符号：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>void</span> <span class=nf>__attribute__</span><span class=p>((</span><span class=n>visibility</span><span class=p>(</span><span class=s>&#34;default&#34;</span><span class=p>)))</span> <span class=n>Exported</span><span class=p>()</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>如此便做到了减小动态库体积（减小符号表）和降低符号碰撞。</p><h2 id=引用资料>引用资料</h2><ul><li>[1] 深入理解计算机系统</li><li>[2] 程序员的自我修养 &ndash; 链接，加载与库</li><li>[3] <a href=https://gcc.gnu.org/wiki/Visibility>gcc.gnu.org/wiki/Visibility</a></li></ul></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/cpp_inline/><span class=mr-1.5>←</span><span>C++ 中 inline 关键字的语义</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/cpp_move_semantics/><span>C++ 移动语义基础</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

@@ -1,0 +1,130 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>CUDA初学笔记 - Jun's Blog</title><meta name=theme-color><meta name=description content="1 2 3 4 5 6 7 8 9 __global__ void Kernel(float* A, int N) { int x = blockIdx.x * blockDim.x + threadIdx.x; if (x < N) A[x] = 1; } int main() { // ... Kernel<<<2,32>>>(A, 64); } 上面是一个简单的 CUDA 例子，其中初始化了一个长度为64的单精度浮"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="CUDA初学笔记"><meta itemprop=description content="1 2 3 4 5 6 7 8 9 __global__ void Kernel(float* A, int N) { int x = blockIdx.x * blockDim.x + threadIdx.x; if (x < N) A[x] = 1; } int main() { // ... Kernel<<<2,32>>>(A, 64); } 上面是一个简单的 CUDA 例子，其中初始化了一个长度为64的单精度浮"><meta itemprop=datePublished content="2022-11-22T17:03:28+08:00"><meta itemprop=dateModified content="2022-11-22T17:03:28+08:00"><meta itemprop=wordCount content="2556"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="CUDA初学笔记"><meta name=twitter:description content="1 2 3 4 5 6 7 8 9 __global__ void Kernel(float* A, int N) { int x = blockIdx.x * blockDim.x + threadIdx.x; if (x < N) A[x] = 1; } int main() { // ... Kernel<<<2,32>>>(A, 64); } 上面是一个简单的 CUDA 例子，其中初始化了一个长度为64的单精度浮"><link rel=canonical href=https://www.junz.org/post/introduction_to_cuda/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">CUDA初学笔记</h1><div class="text-sm antialiased opacity-60"><time>Nov 22, 2022</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>__global__</span> <span class=kt>void</span> <span class=nf>Kernel</span><span class=p>(</span><span class=kt>float</span><span class=o>*</span> <span class=n>A</span><span class=p>,</span> <span class=kt>int</span> <span class=n>N</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>int</span> <span class=n>x</span> <span class=o>=</span> <span class=n>blockIdx</span><span class=p>.</span><span class=n>x</span> <span class=o>*</span> <span class=n>blockDim</span><span class=p>.</span><span class=n>x</span> <span class=o>+</span> <span class=n>threadIdx</span><span class=p>.</span><span class=n>x</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>x</span> <span class=o>&lt;</span> <span class=n>N</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>      <span class=n>A</span><span class=p>[</span><span class=n>x</span><span class=p>]</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>Kernel</span><span class=o>&lt;&lt;&lt;</span><span class=mi>2</span><span class=p>,</span><span class=mi>32</span><span class=o>&gt;&gt;&gt;</span><span class=p>(</span><span class=n>A</span><span class=p>,</span> <span class=mi>64</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>上面是一个简单的 CUDA 例子，其中初始化了一个长度为64的单精度浮点数数组。注意到我们在<code>Kernel</code>函数前有一个 <code>__global__</code> 修饰，这表示这个函数为“核函数”，将被 CUDA 编译器编译，而我们正常的代码，仍将使用 C/C++ 编译器编译。</p><h2 id=cuda-限定词>CUDA 限定词</h2><p>下面是 CUDA 提供的所有用来说明代码的种类的限定词：</p><ul><li><code>__global__</code> 核函数，返回类型必须为 <code>void</code>。从 host 端被调用，在 device 端运行。形式为 <code>Kernel&lt;&lt;&lt;numOfBlocks, threadPerBlock>>>(...)</code>。<strong>注意这是个异步调用。</strong></li><li><code>__device__</code> 用来修饰在 device 端编译运行的代码，返回类型没有限制。</li><li><code>__host__</code> 用来修饰在 host 端编译运行的代码，一般可以直接省略。如果一个函数既可以在 host 端，也可以在 device 端运行，则可以使用 <code>__host__</code> 和 <code>__device__</code> 同时修饰它。<strong>这时候相当于将这份代码编译两份。</strong></li></ul><blockquote><p>host 和 device 都是 CUDA 中的特有名词，可以理解为 host 就是 CPU，而 device 是 GPU。</p></blockquote><h2 id=网格块和线程>网格，块和线程</h2><p>我们每调用一次核函数都会启动一个网格，一个网格(grid)中有若干个块(block)，block 中有含有若干个线程(thread)。</p><p>以上面的的代码举例：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>Kernel</span><span class=o>&lt;&lt;&lt;</span><span class=mi>2</span><span class=p>,</span><span class=mi>32</span><span class=o>&gt;&gt;&gt;</span><span class=p>(</span><span class=n>A</span><span class=p>,</span> <span class=mi>64</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><p><code>Kernel</code> 是核函数，上面我们说到我们可以通过调用它在 CPU 端与 GPU 沟通。而这三个尖括号，则是 CUDA 提供的扩展，我们可以通过它指定启用的网格中有多少个 block, 而每个 block 中又含有多少 thread。</p><p>需要注意的是，三个尖括号中传递的两个元素的类型并不是普通的整数，而是 <code>dim3</code> 类型。它被定义在了 <code>vector_types.h</code> 中。可以将它看作是下面这个样子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>dim3</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>unsigned</span> <span class=kt>int</span> <span class=n>x</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>unsigned</span> <span class=kt>int</span> <span class=n>y</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=kt>unsigned</span> <span class=kt>int</span> <span class=n>z</span> <span class=o>=</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></td></tr></table></div></div><p>也就是说，我们指定的 block 数和 thread 数可以是一维，二维或三维的！而当我们像上面那样使用一个数字的时候，则隐式转换成一个一维的 <code>dim3</code>。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>dim3</span> <span class=nf>d1</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span><span class=mi>1</span><span class=p>,</span><span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>dim3</span> <span class=nf>d2</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span><span class=mi>3</span><span class=p>,</span><span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>dim3</span> <span class=nf>d3</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span><span class=mi>3</span><span class=p>,</span><span class=mi>4</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>Kernel</span><span class=o>&lt;&lt;&lt;</span><span class=n>d1</span><span class=p>,</span><span class=n>d1</span><span class=o>&gt;&gt;&gt;</span><span class=p>(...);</span> <span class=c1>// 使用了2个 block, 每个 block 中有2个 thread。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>Kernel</span><span class=o>&lt;&lt;&lt;</span><span class=n>d2</span><span class=p>,</span><span class=n>d2</span><span class=o>&gt;&gt;&gt;</span><span class=p>(...);</span> <span class=c1>// 使用了2x3个 block, 每个 block 中有2x3个 thread。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>Kernel</span><span class=o>&lt;&lt;&lt;</span><span class=n>d3</span><span class=p>,</span><span class=n>d3</span><span class=o>&gt;&gt;&gt;</span><span class=p>(...);</span> <span class=c1>// 使用了2x3x4个 block, 每个 block 中有2x3x4个 thread。
+</span></span></span></code></pre></td></tr></table></div></div><p>在上面的第一个调用中，我们可以想象 CUDA 启动了这样的一个 grid:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>+-------------------------------------------------------------------+
+</span></span><span class=line><span class=cl>| +------------------------------+ +------------------------------+ |
+</span></span><span class=line><span class=cl>| | +------------++------------+ | | +------------++------------+ | |
+</span></span><span class=line><span class=cl>| | |  thread 0  ||  thread 1  | | | |  thread 0  ||  thread 1  | | |
+</span></span><span class=line><span class=cl>| | +------------++------------+ | | +------------++------------+ | |
+</span></span><span class=line><span class=cl>| |            block 0           | |            block 1           | |
+</span></span><span class=line><span class=cl>| +------------------------------+ +------------------------------+ |
+</span></span><span class=line><span class=cl>+-------------------------------------------------------------------+
+</span></span></code></pre></td></tr></table></div></div><p>在上面的第二个调用中，我们可以想象 CUDA 启动了这样的一个 grid:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>+-------------------------------------------------------------------+
+</span></span><span class=line><span class=cl>| +--------------------++--------------------++--------------------+|
+</span></span><span class=line><span class=cl>| | +----++----++----+ || +----++----++----+ || +----++----++----+ ||
+</span></span><span class=line><span class=cl>| | +----++----++----+ || +----++----++----+ || +----++----++----+ ||
+</span></span><span class=line><span class=cl>| | +----++----++----+ || +----++----++----+ || +----++----++----+ ||
+</span></span><span class=line><span class=cl>| +--------------------++--------------------++--------------------+|
+</span></span><span class=line><span class=cl>| | +----++----++----+ || +----++----++----+ || +----++----++----+ ||
+</span></span><span class=line><span class=cl>| | +----++----++----+ || +----++----++----+ || +----++----++----+ ||
+</span></span><span class=line><span class=cl>| | +----++----++----+ || +----++----++----+ || +----++----++----+ ||
+</span></span><span class=line><span class=cl>| +--------------------++--------------------++--------------------+|
+</span></span><span class=line><span class=cl>+-------------------------------------------------------------------+
+</span></span></code></pre></td></tr></table></div></div><p>三维的就不画了，太复杂。</p><p>而为什么我们需要这种2维甚至3维的表示呢？这主要是因为 GPU 最初都是处理图形学的问题，而图形学中难免会有这种多维的结构。这个时候，在语言中有着原生的多维表示方法就显得比较方便。</p><p>需要注意的是，以上只是 CUDA 的心理模型，不是实际的硬件实现。但是，这个心理模型可以很好地映射到它的硬件实现上，这对我们理解 CUDA 非常重要。</p><p>CUDA 提供了4个内置变量用于访问当前线程在 gird 中的信息，他们都是 <code>dim3</code> 类型：</p><ul><li><code>threadIdx</code> 线程在 block 中的索引，从0开始。</li><li><code>blockDim</code> 一个 block 中线程的数量。</li><li><code>blockIdx</code> 线程的 block 在 grid 中的索引，从0开始。</li><li><code>gridDim</code> block 的总数量。</li></ul><p>在最开始的例子中，我们使用了这样一段代码来访问线程在 grid 中的总索引：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>int</span> <span class=n>x</span> <span class=o>=</span> <span class=n>blockIdx</span><span class=p>.</span><span class=n>x</span> <span class=o>*</span> <span class=n>blockDim</span><span class=p>.</span><span class=n>x</span> <span class=o>+</span> <span class=n>threadIdx</span><span class=p>.</span><span class=n>x</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>这个公式其实很好理解，可以把它看作 C 语言中的二维数组的访问：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>index = BlockIndex * BlockSize + ThreadIndex
+</span></span></code></pre></td></tr></table></div></div><h2 id=共享内存>共享内存</h2><p>每个单独的线程拥有一组寄存器和局部内存可供自身使用。而全局内存则提供了较慢的，可供所有线程使用的空间。除此之外，<strong>每个 block 中还有一份共享内存，可供该 block 中的所有线程共享使用。</strong></p><p>我们可以用以下方式声明一段共享内存：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>__shared__</span> <span class=kt>float</span> <span class=n>shared_mem</span><span class=p>[</span><span class=mi>64</span><span class=p>];</span>
+</span></span></code></pre></td></tr></table></div></div><p>共享内存是一段相较于全局内存和局部内存更快的内存，所以我们可以使用它作为一个缓冲区。举个例子，我们可以通过先将部分全局内存中的内容复制到共享内存上，然后处理后写回的方式大大提升 CUDA 程序的性能。</p><h2 id=硬件模型>硬件模型</h2><p>写 CUDA 不能不懂英伟达 GPU 的硬件模型，很多优化实际上都是根据其硬件上的特点在编程上做出的一些调整。</p><p>上面我们谈到网格，块和线程的心理模型，而事实上，一个 GPU 由多个流处理器簇 (Streaming Multiprocessor), 简称为 SM 组成。每个 SM 中又含有多个流处理器 (Streaming Processor), 简称为 SP, 或者叫 CUDA core。可以把他们理解成下面这样的映射：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>SM =&gt; block
+</span></span><span class=line><span class=cl>SP =&gt; thread
+</span></span></code></pre></td></tr></table></div></div><p>一个 SM 上可以并行地运行一个或多个 block, 这取决于硬件性能。而当一个 block 运行在一个 SM 时，必须完全执行到退出，不能被迁移到其他 SM 上（调试模式除外）。</p><p>而在一个 SM 中的所有线程，又是以 <code>wrap</code> (线程束) 的形式进行调度的。<code>wrap</code> 就是一组线程，通常的大小为32。所以一个 block 中会有 <code>blockSize/warpSize</code> 个 <code>wrap</code>。如果 block 中的线程数不能被 <code>wrapSize</code> 整除，那么将向上取整。也就是说会有一个 wrap 中将有若干个 thread 是无效的，不做任何工作。这显然不是我们所希望的，<strong>所以 block 的大小，也就是 <code>blockDim</code>，通常情况应取32的倍数，才不会造成性能的浪费。</strong></p><p>另外，<code>blockDim</code> 也不能过大，因为一个 block 中的所有线程共用一个寄存器仓库 (register file)，如果线程过大就会导致寄存器不够用使部分暂时没有被使用的寄存器被 spill 到所在 SM 的一级缓存中，导致性能的降低。</p><p>一个 <code>wrap</code> 中的32个线程以<code>SIMT (Single Instruction Multiple Thread)</code> 的方式执行。也就是说一个 <code>wrap</code> 中的所有线程在同一时间内会执行相同的一行代码。</p><p>这其实会造成一个潜在的问题，举个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>int</span> <span class=n>tid</span> <span class=o>=</span> <span class=n>blockDim</span><span class=p>.</span><span class=n>x</span> <span class=o>*</span> <span class=n>blockIdx</span><span class=p>.</span><span class=n>x</span> <span class=o>+</span> <span class=n>threadIdx</span><span class=p>.</span><span class=n>x</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=n>tid</span> <span class=o>%</span> <span class=mi>2</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=p>...</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>由于一个 <code>wrap</code> 中的每个线程的线程号是不一样的，当执行到这个 <code>if</code> 语句时，有些线程必定会不满足这个条件，无法执行下去。这就导致了这个 <code>wrap</code> 中的所有线程将无法执行同一行代码。这种情况被称为 <code>warp divergence</code>。<strong>当 <code>warp divergence</code> 发生时，无法进入分支语句的线程就会进入等待状态，造成闲置浪费资源。</strong></p><h2 id=bank-conflicts>Bank conflicts</h2><p>为了获取高带宽，共享内存在物理上被分成32个（一个 <code>wrap</code>）大小相同的 bank，然后再将这32块小空间并联。（据说在最新架构成32变成了16，也就是半个 <code>wrap</code>）</p><p>也就是说，<code>shared_mem[0]</code> 的数据存放在 <code>bank[0]</code> 处，<code>shared_mem[31]</code> 的数据存放在 <code>bank[31]</code> 处，然后 <code>shared_mem[32]</code> 的数据也开始存放在 <code>bank[0]</code> 处。</p><p>如下图所示：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>+----+     +----+ +----+          
+</span></span><span class=line><span class=cl>|    | ... |  32| | 0  |  bank 0  
+</span></span><span class=line><span class=cl>+----+     +----+ +----+          
+</span></span><span class=line><span class=cl>+----+     +----+ +----+          
+</span></span><span class=line><span class=cl>|    | ... |  33| | 1  |  bank 1  
+</span></span><span class=line><span class=cl>+----+     +----+ +----+          
+</span></span><span class=line><span class=cl>       ...                ...        
+</span></span><span class=line><span class=cl>                                  
+</span></span><span class=line><span class=cl>+----+     +----+ +----+          
+</span></span><span class=line><span class=cl>|    | ... | 63 | | 31 |  bank 31  
+</span></span><span class=line><span class=cl>+----+     +----+ +----+     
+</span></span></code></pre></td></tr></table></div></div><p>bank 与 bank 之间并行读取和写入不影响，但单个 bank 的访问则是串行的。也就是说<strong>当一个或半个 <code>wrap</code> 中多个线程访问了同一个 bank 时，线程只能一个一个的读取和写入，造成 bank conflicts。</strong></p><p>注意一个特例，如果一个或半个 <code>wrap</code> 中的所有线程都访问了一个地址，则 GPU 会开启广播 (broadcast) 机制，也不会发生冲突。</p></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/2022_year_summary/><span class=mr-1.5>←</span><span>2022年度总结</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/asm_protectmode/><span>汇编语言之保护模式</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

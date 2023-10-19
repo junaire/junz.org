@@ -1,0 +1,321 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>由Redis学习数据结构--链表 - Jun's Blog</title><meta name=theme-color><meta name=description content="简介 Redis是一个优秀的非关系型数据库，常常在高性能分布式系统中用于储存缓冲队列。它本身是用C语言写的，其中实现了许多基本数据类型，如安全"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="由Redis学习数据结构--链表"><meta itemprop=description content="简介 Redis是一个优秀的非关系型数据库，常常在高性能分布式系统中用于储存缓冲队列。它本身是用C语言写的，其中实现了许多基本数据类型，如安全"><meta itemprop=datePublished content="2021-04-14T21:26:42+08:00"><meta itemprop=dateModified content="2021-04-14T21:26:42+08:00"><meta itemprop=wordCount content="2606"><meta itemprop=keywords content="C语言,redis,链表,"><meta name=twitter:card content="summary"><meta name=twitter:title content="由Redis学习数据结构--链表"><meta name=twitter:description content="简介 Redis是一个优秀的非关系型数据库，常常在高性能分布式系统中用于储存缓冲队列。它本身是用C语言写的，其中实现了许多基本数据类型，如安全"><link rel=canonical href=https://www.junz.org/post/linked_list_in_redis/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">由Redis学习数据结构--链表</h1><div class="text-sm antialiased opacity-60"><time>Apr 14, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><h2 id=简介>简介</h2><p>Redis是一个优秀的非关系型数据库，常常在高性能分布式系统中用于储存缓冲队列。它本身是用C语言写的，其中实现了许多基本数据类型，如安全的字符串（SDS），链表，字典等。虽然它是一个数据库，但也非常适合用于C语言基础和数据结构的学习。下面是我在Redis中关于链表实现的笔记。</p><h2 id=链表概述>链表概述</h2><p>简单来说，链表是一种数据结构，类似于数组。</p><p>在详细解释链表是什么之前，我们先简单回顾下数组。数组是一种内存连续分布的结构，我们分配一整片内存，并将其人工分割为一小块一小块，来作为数组中的每一个元素。这意味着数组在我们分配后的大小便确定了，不能改变。我们也不能随意在数组中插入一个元素。而当我们需要访问数组中的元素时，我们实际上是通过首元素的基地址加上偏移量访问的。考虑下面这个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>int a[5] = {1,2,3,4,5};
+</span></span><span class=line><span class=cl>int b = a[2];
+</span></span><span class=line><span class=cl>int c = *(a + 2 * sizeof(int));
+</span></span></code></pre></td></tr></table></div></div><p>在上面这个例子中，b和c的值应该是一样的。所以我们可以知道数组元素访问的时间复杂度应该是<code>O(1)</code>，也就是不管多大的数组，它元素访问的速度应该都是一样的。</p><p>而链表的出现就很好的解决了数组的一些不足。链表本身由一个一个单独的节点组成，然后像一条铁链一样连起来。<strong>它本身内存是不连续分配的，而不是在初始化时就确定的。所以我们可以随意在两个节点之间插入元素，也可以不断拓展链表的长度。但是，为了找到某一特定的元素，我们必须从头开始遍历链表，也就是说它的访问速度为<code>O(n)</code>。</strong></p><h2 id=redis中的实现>Redis中的实现</h2><h3 id=链表的节点>链表的节点</h3><p>在redis中，链表的节点是一个由<code>struct</code>声明的一个数据结构（listNode），其中储存着3个对象：两个指针，分别指向前后节点，一个<code>void*</code>指针，用于指向数据值。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>typedef struct listNode {
+</span></span><span class=line><span class=cl>    struct listNode *prev;
+</span></span><span class=line><span class=cl>    struct listNode *next;
+</span></span><span class=line><span class=cl>    void *value;
+</span></span><span class=line><span class=cl>} listNode;
+</span></span></code></pre></td></tr></table></div></div><h3 id=链表本身>链表本身</h3><p>在redis中，用于表示链表的数据结构自然就是list啦，它仍然也是由<code>struct</code>声明的。在它内部有这么几个对象：链表的第一个节点（head），链表的最后一个节点（tail），链表中节点的数目，还有三个函数指针。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>typedef struct list {
+</span></span><span class=line><span class=cl>    listNode *head;
+</span></span><span class=line><span class=cl>    listNode *tail;
+</span></span><span class=line><span class=cl>    void *(*dup)(void *ptr);
+</span></span><span class=line><span class=cl>    void (*free)(void *ptr);
+</span></span><span class=line><span class=cl>    int (*match)(void *ptr, void *key);
+</span></span><span class=line><span class=cl>    unsigned long len;
+</span></span><span class=line><span class=cl>} list;
+</span></span></code></pre></td></tr></table></div></div><h3 id=操作链表的函数>操作链表的函数</h3><p>下面的所有函数均来自于redis的源码，具体位置在<code>redis/src/adlist.c</code>中。</p><p>其中<code>zmalloc</code>和<code>zfree</code>是作者实现的<code>malloc</code>和<code>free</code>版本，我们可以把它直接看作<code>malloc</code>和<code>free</code>。</p><h4 id=创建链表>创建链表</h4><p>创建空链表的过程也很简单，具体就是先申请一块和<code>list</code>一样大小的内存，如果申请失败返回了<code>NULL</code>，就返回<code>NULL</code>。然后再把链表中的各个对象置为空。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>list</span> <span class=o>*</span><span class=nf>listCreate</span><span class=p>(</span><span class=kt>void</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>struct</span> <span class=n>list</span> <span class=o>*</span><span class=n>list</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>((</span><span class=n>list</span> <span class=o>=</span> <span class=nf>zmalloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=o>*</span><span class=n>list</span><span class=p>)))</span> <span class=o>==</span> <span class=nb>NULL</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>dup</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>free</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>match</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>list</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=清空链表>清空链表</h4><p>注意，这里的清空链表不是销毁了整个链表，而只是清空了链表中的所有元素，也就是listNode。
+我们遍历了整个链表，并依次将各个节点free掉，最后将链表的首元素指针和尾元素指针指向NULL，并将链表的长度设为0。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>void</span> <span class=nf>listEmpty</span><span class=p>(</span><span class=n>list</span> <span class=o>*</span><span class=n>list</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=kt>unsigned</span> <span class=kt>long</span> <span class=n>len</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>listNode</span> <span class=o>*</span><span class=n>current</span><span class=p>,</span> <span class=o>*</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>current</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>len</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>while</span><span class=p>(</span><span class=n>len</span><span class=o>--</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>next</span> <span class=o>=</span> <span class=n>current</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>list</span><span class=o>-&gt;</span><span class=n>free</span><span class=p>)</span> <span class=n>list</span><span class=o>-&gt;</span><span class=nf>free</span><span class=p>(</span><span class=n>current</span><span class=o>-&gt;</span><span class=n>value</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=nf>zfree</span><span class=p>(</span><span class=n>current</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>current</span> <span class=o>=</span> <span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=添加元素到链表头部>添加元素到链表头部</h4><ol><li>首先创建一个节点，并将我们的值赋给它</li><li>如果我们的链表的长度是0，那么我们就让链表的首元素指针和尾元素指针都指向它，并让该节点的前一个元素和后一个元素指向NULL</li><li>如果我们的链表长度不为0，那么我们就让该节点的后一个元素指向本来链表的头元素，让本来链表的头元素指向该节点，最后让链表的头元素指针指向该节点</li><li>将链表的长度加1，并返回出去</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>list</span> <span class=o>*</span><span class=nf>listAddNodeHead</span><span class=p>(</span><span class=n>list</span> <span class=o>*</span><span class=n>list</span><span class=p>,</span> <span class=kt>void</span> <span class=o>*</span><span class=n>value</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>listNode</span> <span class=o>*</span><span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>((</span><span class=n>node</span> <span class=o>=</span> <span class=nf>zmalloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=o>*</span><span class=n>node</span><span class=p>)))</span> <span class=o>==</span> <span class=nb>NULL</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>node</span><span class=o>-&gt;</span><span class=n>value</span> <span class=o>=</span> <span class=n>value</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>list</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=添加元素到链表尾部>添加元素到链表尾部</h4><ol><li>首先创建一个节点，并将我们的值赋给它</li><li>如果我们的链表的长度是0，那么我们就让链表的首元素指针和尾元素指针都指向它，并让该节点的前一个元素和后一个元素指向NULL</li><li>如果我们的链表长度不为0，那么我们就让该节点的前一个元素指向本来链表的尾元素，让本来链表的尾元素指向该节点，最后让链表的尾元素指针指向该节点</li><li>将链表的长度加1，并返回出去</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>list</span> <span class=o>*</span><span class=nf>listAddNodeTail</span><span class=p>(</span><span class=n>list</span> <span class=o>*</span><span class=n>list</span><span class=p>,</span> <span class=kt>void</span> <span class=o>*</span><span class=n>value</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>listNode</span> <span class=o>*</span><span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>((</span><span class=n>node</span> <span class=o>=</span> <span class=nf>zmalloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=o>*</span><span class=n>node</span><span class=p>)))</span> <span class=o>==</span> <span class=nb>NULL</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>node</span><span class=o>-&gt;</span><span class=n>value</span> <span class=o>=</span> <span class=n>value</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>list</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=插入元素到链表中>插入元素到链表中</h4><ol><li>首先创建一个节点，并将我们的值赋给它</li><li>如果after的值不为0，那么向后插入。将该节点的前元素指针指向给定元素，并让该节点后元素指针指向给定元素的后一个元素。</li><li>如果给定元素是链表的最后一个元素，那么让链表的尾元素指针指向该节点。</li><li>如果after的值为0，那么向前插入。将该节点的后元素指针指向给定元素，并让该节点前元素指针指向给定元素的前一个元素。</li><li>如果给定元素是链表的第一个元素，那么让链表的头元素指针指向该节点。</li><li>将链表的长度加1，并返回出去</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>list</span> <span class=o>*</span><span class=nf>listInsertNode</span><span class=p>(</span><span class=n>list</span> <span class=o>*</span><span class=n>list</span><span class=p>,</span> <span class=n>listNode</span> <span class=o>*</span><span class=n>old_node</span><span class=p>,</span> <span class=kt>void</span> <span class=o>*</span><span class=n>value</span><span class=p>,</span> <span class=kt>int</span> <span class=n>after</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>listNode</span> <span class=o>*</span><span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>((</span><span class=n>node</span> <span class=o>=</span> <span class=nf>zmalloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=o>*</span><span class=n>node</span><span class=p>)))</span> <span class=o>==</span> <span class=nb>NULL</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>node</span><span class=o>-&gt;</span><span class=n>value</span> <span class=o>=</span> <span class=n>value</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>after</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>old_node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>old_node</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>==</span> <span class=n>old_node</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>old_node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>old_node</span><span class=o>-&gt;</span><span class=n>prev</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>==</span> <span class=n>old_node</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>!=</span> <span class=nb>NULL</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>!=</span> <span class=nb>NULL</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>node</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>list</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=删除链表中的元素>删除链表中的元素</h4><ol><li><p>先判断需要删除节点是否为头元素，如果不是，就让前一个元素的后元素指针指向给定元素的后一个元素。</p></li><li><p>如果是的话，就让链表的头元素指针指向给定元素的后一个元素。</p></li><li><p>再判断需要删除节点是否为尾元素，如果不是，就让后元素的前指针指向给定元素的前一个元素。</p></li><li><p>如果是的话，就让链表的尾指针指向给定元素的前一个元素。</p></li><li><p>释放需要删除节点。</p></li><li><p>将链表的长度减一。</p></li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>void</span> <span class=nf>listDelNode</span><span class=p>(</span><span class=n>list</span> <span class=o>*</span><span class=n>list</span><span class=p>,</span> <span class=n>listNode</span> <span class=o>*</span><span class=n>node</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>else</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=n>node</span><span class=o>-&gt;</span><span class=n>next</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>else</span>
+</span></span><span class=line><span class=cl>        <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=n>node</span><span class=o>-&gt;</span><span class=n>prev</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>list</span><span class=o>-&gt;</span><span class=n>free</span><span class=p>)</span> <span class=n>list</span><span class=o>-&gt;</span><span class=nf>free</span><span class=p>(</span><span class=n>node</span><span class=o>-&gt;</span><span class=n>value</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=nf>zfree</span><span class=p>(</span><span class=n>node</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>list</span><span class=o>-&gt;</span><span class=n>len</span><span class=o>--</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=按索引查找指定元素>按索引查找指定元素</h4><ol><li>如果索引是负数，即从后往前查找。</li><li>如果索引是正数，即从前往后查找。</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>listNode</span> <span class=o>*</span><span class=nf>listIndex</span><span class=p>(</span><span class=n>list</span> <span class=o>*</span><span class=n>list</span><span class=p>,</span> <span class=kt>long</span> <span class=n>index</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>listNode</span> <span class=o>*</span><span class=n>n</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>index</span> <span class=o>&lt;</span> <span class=mi>0</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>index</span> <span class=o>=</span> <span class=p>(</span><span class=o>-</span><span class=n>index</span><span class=p>)</span><span class=o>-</span><span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>n</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>tail</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>while</span><span class=p>(</span><span class=n>index</span><span class=o>--</span> <span class=o>&amp;&amp;</span> <span class=n>n</span><span class=p>)</span> <span class=n>n</span> <span class=o>=</span> <span class=n>n</span><span class=o>-&gt;</span><span class=n>prev</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>n</span> <span class=o>=</span> <span class=n>list</span><span class=o>-&gt;</span><span class=n>head</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>while</span><span class=p>(</span><span class=n>index</span><span class=o>--</span> <span class=o>&amp;&amp;</span> <span class=n>n</span><span class=p>)</span> <span class=n>n</span> <span class=o>=</span> <span class=n>n</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>n</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=合并两个链表>合并两个链表</h4><p>将第二个链表o合并到第一个链表l上。</p><ol><li>如果o的长度为0，即空链表，则直接返回。</li><li>将l链表的尾元素指针指向o链表的头元素上。</li><li>如果l链表不为空，就把l链表的为元素和o链表的头元素连接在一起。</li><li>如果l链表为空，就l链表的头元素指针指向o链表的头元素。</li><li>将l链表的尾元素指针指向o链表的最后一个元素，并重新设置l链表的长度。</li><li>置空o链表。</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>void</span> <span class=nf>listJoin</span><span class=p>(</span><span class=n>list</span> <span class=o>*</span><span class=n>l</span><span class=p>,</span> <span class=n>list</span> <span class=o>*</span><span class=n>o</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>o</span><span class=o>-&gt;</span><span class=n>len</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=k>return</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>o</span><span class=o>-&gt;</span><span class=n>head</span><span class=o>-&gt;</span><span class=n>prev</span> <span class=o>=</span> <span class=n>l</span><span class=o>-&gt;</span><span class=n>tail</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>l</span><span class=o>-&gt;</span><span class=n>tail</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=n>l</span><span class=o>-&gt;</span><span class=n>tail</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>o</span><span class=o>-&gt;</span><span class=n>head</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>else</span>
+</span></span><span class=line><span class=cl>        <span class=n>l</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>o</span><span class=o>-&gt;</span><span class=n>head</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>l</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=n>o</span><span class=o>-&gt;</span><span class=n>tail</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>l</span><span class=o>-&gt;</span><span class=n>len</span> <span class=o>+=</span> <span class=n>o</span><span class=o>-&gt;</span><span class=n>len</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=cm>/* Setup other as an empty list. */</span>
+</span></span><span class=line><span class=cl>    <span class=n>o</span><span class=o>-&gt;</span><span class=n>head</span> <span class=o>=</span> <span class=n>o</span><span class=o>-&gt;</span><span class=n>tail</span> <span class=o>=</span> <span class=nb>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>o</span><span class=o>-&gt;</span><span class=n>len</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div></section><footer class="mt-12 flex flex-wrap"><a class="mb-1.5 mr-1.5 rounded-lg bg-black/[3%] px-5 py-1.5 no-underline dark:bg-white/[8%]" href=https://www.junz.org/tags/c%E8%AF%AD%E8%A8%80>C语言</a>
+<a class="mb-1.5 mr-1.5 rounded-lg bg-black/[3%] px-5 py-1.5 no-underline dark:bg-white/[8%]" href=https://www.junz.org/tags/redis>redis</a>
+<a class="mb-1.5 mr-1.5 rounded-lg bg-black/[3%] px-5 py-1.5 no-underline dark:bg-white/[8%]" href=https://www.junz.org/tags/%E9%93%BE%E8%A1%A8>链表</a></footer><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/lambda_in_cpp/><span class=mr-1.5>←</span><span>C++中lambda表达式基础</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/thoughts_about_python_crawl/><span>对Python及爬虫行业的思考</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

@@ -1,0 +1,109 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>简要剖析const关键字 - Jun's Blog</title><meta name=theme-color><meta name=description content="const的作用 const关键字保证了我们的变量不会改变，成为常量． 当用在成员函数时，它保证此成员函数不会改变类中的其他成员 const用法 1"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="简要剖析const关键字"><meta itemprop=description content="const的作用 const关键字保证了我们的变量不会改变，成为常量． 当用在成员函数时，它保证此成员函数不会改变类中的其他成员 const用法 1"><meta itemprop=datePublished content="2021-03-13T12:46:54+08:00"><meta itemprop=dateModified content="2021-03-13T12:46:54+08:00"><meta itemprop=wordCount content="1385"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="简要剖析const关键字"><meta name=twitter:description content="const的作用 const关键字保证了我们的变量不会改变，成为常量． 当用在成员函数时，它保证此成员函数不会改变类中的其他成员 const用法 1"><link rel=canonical href=https://www.junz.org/post/const_in_cpp/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">简要剖析const关键字</h1><div class="text-sm antialiased opacity-60"><time>Mar 13, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><h1 id=const的作用><code>const</code>的作用</h1><p><code>const</code>关键字保证了我们的变量不会改变，成为常量．</p><p>当用在成员函数时，它保证此成员函数不会改变类中的其他成员</p><h1 id=const用法><code>const</code>用法</h1><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>const declaration ;
+</span></span><span class=line><span class=cl>member-function const ;
+</span></span></code></pre></td></tr></table></div></div><h2 id=const用在指针上时><code>const</code>用在指针上时</h2><p>这里有两种情况，一个是指针所指的值为常量，另一个是指针本身为常量．</p><ul><li>指针所指值为常量，这种情况称为底层const</li></ul><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>int i = 0;
+</span></span><span class=line><span class=cl>const int *ptr = &amp;i;
+</span></span></code></pre></td></tr></table></div></div><p>我们不可以改变<code>i</code>的值，但是可以改变<code>ptr</code>的指向．</p><ul><li>指针本身为常量，这种情况称为顶层const</li></ul><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>int i = 0;
+</span></span><span class=line><span class=cl>int* const ptr = &amp;i;
+</span></span></code></pre></td></tr></table></div></div><p>我们不能改变<code>ptr</code>的指向，也就是<code>ptr</code>中保存的值，即<code>i</code>的地址，但是我们可以通过解引用改变<code>i</code>的值.</p><h2 id=const用在成员函数时><code>const</code>用在成员函数时</h2><p><code>const</code>成员函数无法改变其他成员，但这却存在一个问题，很明显，当成员函数中存在指针变量时，我们无法保证指针所指值不发生改变．因为我们所保证的仅仅只是指针保存的地址，或者说指针本身保持不变而已．</p><h3 id=死板的const成员函数>死板的<code>const</code>成员函数</h3><p><code>const</code>成员函数无法改变其他成员，所有的．但问题是有些成员的改变对于我们说是允许的，并不影响我们的需求．举<code>Effective C++</code>这本书中的一个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>class CTextBlock
+</span></span><span class=line><span class=cl>{
+</span></span><span class=line><span class=cl>public:
+</span></span><span class=line><span class=cl>    ...
+</span></span><span class=line><span class=cl>    std::size length() const;
+</span></span><span class=line><span class=cl>private:
+</span></span><span class=line><span class=cl>    char *pText;
+</span></span><span class=line><span class=cl>    std::size_t textLength;
+</span></span><span class=line><span class=cl>    bool lengthIsValid;
+</span></span><span class=line><span class=cl>};
+</span></span><span class=line><span class=cl>std::size_t CTextBlock::length() const
+</span></span><span class=line><span class=cl>{
+</span></span><span class=line><span class=cl>    if(!lengthIsValid)
+</span></span><span class=line><span class=cl>    {
+</span></span><span class=line><span class=cl>        textLength = std::strlen(pText);
+</span></span><span class=line><span class=cl>	lengthIsValid = True;
+</span></span><span class=line><span class=cl>    }
+</span></span><span class=line><span class=cl>    return textLength;
+</span></span><span class=line><span class=cl>}
+</span></span></code></pre></td></tr></table></div></div><p>上面这个例子实际上会编译错误，因为我们声明了<code>length</code>方法为<code>const</code>，但却改变了原对象．C++对此的解决办法是引入<a href=https://en.cppreference.com/w/cpp/keyword/mutable><code>mutable</code></a>关键字．</p><p>我们只要在成员变量声明前加上它，就可以让它处于始终可变的状态，即使是在<code>const</code>成员函数中．</p><h2 id=passed-by-reference-const><code>passed by reference const</code></h2><p>我们知道在C/C++中，函数传参的方式是<code>passed by value</code>．也就是说，函数实际是拷贝实参到形参中，函数中的形参与实参实际是两个值．当函数执行完后，它所产生的＂对象＂，如形参等，将被一一销毁．这就意味着我们无法直接改变函数的实参，举个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>void func(int i)
+</span></span><span class=line><span class=cl>{
+</span></span><span class=line><span class=cl>     i = i + 1;
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>int j = 1;
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>func(j);
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>printf(&#34;%d\n&#34;,j); // j = ???
+</span></span></code></pre></td></tr></table></div></div><p>实际上<code>j</code>的值仍为1，而不是2．因为函数中的<code>i</code>根本不是<code>j</code>，而只是具有<code>j</code>的值的副本！</p><h3 id=c语言的解决办法>C语言的解决办法</h3><p>C Style的做法是通过指针．传进函数的其实仍然只是实参的拷贝，也就是我们想改变的那个变量的地址，但通过解引用，我们就可以间接访问到那个变量的值，从而改变它．</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>void func_ptr(int* i)
+</span></span><span class=line><span class=cl>{
+</span></span><span class=line><span class=cl>    *i = *i + 1;
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>int j = 1;
+</span></span><span class=line><span class=cl>func_ptr(&amp;j);
+</span></span><span class=line><span class=cl>printf(&#34;%d\n&#34;,j); // j = 2
+</span></span></code></pre></td></tr></table></div></div><h3 id=c的解决办法>C++的解决办法</h3><p>我们知道C语言的指针及其强大和灵活，使用不好的话很容易出现内存错误，而且难以调试．由此，C++提供了一种更好的解决办法，即引入了＂引用＂<code>reference</code></p><p>引用的本质其实是指针，但用法与指针区别很大，我们可以简单理解为引用是指针的语法糖．</p><p>使用引用的优点是很明显的，由于我们可以通过引用直接访问实参中的值，而不需要额外的拷贝工作，大大地提升了性能．
+然而直接使用引用却有一个很严重的问题，因为这么做我们可能无意中改变了实参，而我们所需要的仅仅只是读取实参的值而已，而不是改变它．</p><p><strong>更好的方法是使用常量引用，即<code>passed by reference const</code></strong></p><p>通过常量引用，我们不仅省去了拷贝实参带来的性能损失，而且保证了函数仅仅能够读取值而无法作出任何修改．</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>class Foo {
+</span></span><span class=line><span class=cl>   //large object...
+</span></span><span class=line><span class=cl>};
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>void func(const Foo&amp; f)
+</span></span><span class=line><span class=cl>{
+</span></span><span class=line><span class=cl>    //read object f...
+</span></span><span class=line><span class=cl>}
+</span></span></code></pre></td></tr></table></div></div><p>通过上述代码我们可以看到，<code>Foo</code>是一个＂很大＂的对象，拷贝成本很高，但是直接使用引用又可能改变它的值．此时使用常量引用便完美解决了这两个问题．在任何需要读值而不需要写值的函数传参情况，我们都推荐使用<code>passed by reference const</code>．</p></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/cpp_oop_overview/><span class=mr-1.5>←</span><span>浅谈C++中的类</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/regex_tutorial/><span>正则表达式基础总结</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

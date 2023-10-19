@@ -1,0 +1,412 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>浅析 libc++ 中的 string 实现 - Jun's Blog</title><meta name=theme-color><meta name=description content="std::string 也许是 C++ 程序员最常用的标准库数据结构之一了，用了这么久的 std::string，它内部究竟是如何实现的？究竟什么是SSO (Small String Optimiz"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="浅析 libc++ 中的 string 实现"><meta itemprop=description content="std::string 也许是 C++ 程序员最常用的标准库数据结构之一了，用了这么久的 std::string，它内部究竟是如何实现的？究竟什么是SSO (Small String Optimiz"><meta itemprop=datePublished content="2022-08-13T13:33:39+08:00"><meta itemprop=dateModified content="2022-08-13T13:33:39+08:00"><meta itemprop=wordCount content="2536"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="浅析 libc++ 中的 string 实现"><meta name=twitter:description content="std::string 也许是 C++ 程序员最常用的标准库数据结构之一了，用了这么久的 std::string，它内部究竟是如何实现的？究竟什么是SSO (Small String Optimiz"><link rel=canonical href=https://www.junz.org/post/libcxx_string/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">浅析 libc++ 中的 string 实现</h1><div class="text-sm antialiased opacity-60"><time>Aug 13, 2022</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><p><code>std::string</code> 也许是 C++ 程序员最常用的标准库数据结构之一了，用了这么久的 <code>std::string</code>，它内部究竟是如何实现的？究竟什么是<code>SSO (Small String Optimization)</code>？最近刚好对 <code>libc++</code> 的代码感兴趣，就以它的实现为例，简要的回答下以上问题。<strong>（注意为了方便叙述，我对展示的代码进行了一点裁减，并非为实际代码！）</strong></p><h2 id=内部结构>内部结构</h2><p>我这里的 libc++ 版本为 <a href=https://github.com/llvm/llvm-project/commit/37db283362232eaa0a57d452fee45cf2b147f356>37db2833</a> 。可以看到，<code>libcxx</code> 内部定义了一个宏（<code>_LIBCPP_ABI_ALTERNATE_STRING_LAYOUT</code>），这个宏由 <a href=https://github.com/llvm/llvm-project/commit/a66a7b30ce3624a849867ad39ac62fb8944eb141>a66a7b30</a> 引入，简单来说就是可以通过它控制一些会造成 <code>ABI-changing</code> 的特性，比如我们这里对于 <code>std::string</code> 的内部布局。下面这段代码简单展示了这个宏的作用：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=cp>#ifdef _LIBCPP_ABI_ALTERNATE_STRING_LAYOUT
+</span></span></span><span class=line><span class=cl><span class=cp></span>    <span class=k>struct</span> <span class=nc>__long</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>pointer</span>   <span class=n>__data_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>size_type</span> <span class=n>__size_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>size_type</span> <span class=nl>__cap_</span> <span class=p>:</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>size_type</span><span class=p>)</span> <span class=o>*</span> <span class=n>CHAR_BIT</span> <span class=o>-</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>size_type</span> <span class=nl>__is_long_</span> <span class=p>:</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=k>enum</span> <span class=p>{</span><span class=n>__min_cap</span> <span class=o>=</span> <span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=n>__long</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>)</span><span class=o>/</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>&gt;</span> <span class=mi>2</span> <span class=o>?</span>
+</span></span><span class=line><span class=cl>                      <span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=n>__long</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>)</span><span class=o>/</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>:</span> <span class=mi>2</span><span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=k>struct</span> <span class=nc>__short</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>value_type</span> <span class=n>__data_</span><span class=p>[</span><span class=n>__min_cap</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>        <span class=kt>unsigned</span> <span class=kt>char</span> <span class=n>__padding_</span><span class=p>[</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>        <span class=kt>unsigned</span> <span class=kt>char</span> <span class=nl>__size_</span> <span class=p>:</span> <span class=mi>7</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=kt>unsigned</span> <span class=kt>char</span> <span class=nl>__is_long_</span> <span class=p>:</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl><span class=cp>#else
+</span></span></span><span class=line><span class=cl><span class=cp></span>    <span class=c1>// Attribute &#39;packed&#39; is used to keep the layout compatible with the
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// previous definition that did not use bit fields. This is because on
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// some platforms bit fields have a default size rather than the actual
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=c1>// size used, e.g., it is 4 bytes on AIX. See D128285 for details.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>struct</span> <span class=nc>__long</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>struct</span> <span class=nc>_LIBCPP_PACKED</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>size_type</span> <span class=nl>__is_long_</span> <span class=p>:</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>size_type</span> <span class=nl>__cap_</span> <span class=p>:</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>size_type</span><span class=p>)</span> <span class=o>*</span> <span class=n>CHAR_BIT</span> <span class=o>-</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>};</span>
+</span></span><span class=line><span class=cl>        <span class=n>size_type</span> <span class=n>__size_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>pointer</span>   <span class=n>__data_</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=k>enum</span> <span class=p>{</span><span class=n>__min_cap</span> <span class=o>=</span> <span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=n>__long</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>)</span><span class=o>/</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>&gt;</span> <span class=mi>2</span> <span class=o>?</span>
+</span></span><span class=line><span class=cl>                      <span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=n>__long</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>)</span><span class=o>/</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>:</span> <span class=mi>2</span><span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=k>struct</span> <span class=nc>__short</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>struct</span> <span class=nc>_LIBCPP_PACKED</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=kt>unsigned</span> <span class=kt>char</span> <span class=nl>__is_long_</span> <span class=p>:</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=kt>unsigned</span> <span class=kt>char</span> <span class=nl>__size_</span> <span class=p>:</span> <span class=mi>7</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>};</span>
+</span></span><span class=line><span class=cl>        <span class=kt>char</span> <span class=n>__padding_</span><span class=p>[</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>        <span class=n>value_type</span> <span class=n>__data_</span><span class=p>[</span><span class=n>__min_cap</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl><span class=cp>#endif </span><span class=c1>// _LIBCPP_ABI_ALTERNATE_STRING_LAYOUT
+</span></span></span></code></pre></td></tr></table></div></div><p>可以看到不管选取的哪个 <code>layout</code>，我们都定义了两个结构体。其中结构体 <code>__long</code> 负责储存长字符串，他维护了一个指向堆的指针 <code>__data_</code>，负责存储实际的字符串，而结构体 <code>__short</code> 则负责存储短字符串，也就是所谓的 <code>SSO</code>。由于堆分配较为昂贵，我们将较短的字符串直接用一个字符数组储存在栈上，也就是这里的 <code>__data__[__min_cap]</code>。GDB 调试下可以发现 <code>__min_cap</code> 的大小为 23。也就是小于 23 的字符会被内联在 <code>std::string</code> 中，大于这个数的字符串会被储存在堆中。</p><p>接着，以下代码定义了总的内部储存结构：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl>    <span class=k>union</span> <span class=nc>__ulx</span><span class=p>{</span><span class=n>__long</span> <span class=n>__lx</span><span class=p>;</span> <span class=n>__short</span> <span class=n>__lxx</span><span class=p>;};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>enum</span> <span class=p>{</span><span class=n>__n_words</span> <span class=o>=</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>__ulx</span><span class=p>)</span> <span class=o>/</span> <span class=k>sizeof</span><span class=p>(</span><span class=n>size_type</span><span class=p>)};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>struct</span> <span class=nc>__raw</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>size_type</span> <span class=n>__words</span><span class=p>[</span><span class=n>__n_words</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>struct</span> <span class=nc>__rep</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>union</span>
+</span></span><span class=line><span class=cl>        <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>__long</span>  <span class=n>__l</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>__short</span> <span class=n>__s</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>__raw</span>   <span class=n>__r</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>};</span>
+</span></span><span class=line><span class=cl>    <span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=n>__compressed_pair</span><span class=o>&lt;</span><span class=n>__rep</span><span class=p>,</span> <span class=n>allocator_type</span><span class=o>&gt;</span> <span class=n>__r_</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>可以看到 <code>__r_</code> 为实际维护字符串的成员，它的类型是一个 <code>_compressed_pair</code>，我们可以简单将他理解为是一个 <code>std::pair</code> 。<code>__r_</code> 的第一个成员是 <code>__rep</code>，第二个为<code>allocator</code>，也就是负责实际对内存进行操作和分配的结构。而 <code>__rep</code> 内只有一个 <code>union</code> ，其中成员可能为前面所说的长字符串 <code>__long</code>，短字符串 <code>__short</code>，或者为 <code>__raw</code>。这个 <code>__raw</code> 好像没啥用，也不知道是干啥的。</p><h2 id=字符串的构造>字符串的构造</h2><p>下面通过一段简单的代码看一下 <code>string</code> 是如何构造的：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>str</span><span class=p>{};</span>
+</span></span></code></pre></td></tr></table></div></div><p>它选择了下面这个构造函数：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>_CharT</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Traits</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Allocator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kr>inline</span> <span class=n>basic_string</span><span class=o>&lt;</span><span class=n>_CharT</span><span class=p>,</span> <span class=n>_Traits</span><span class=p>,</span> <span class=n>_Allocator</span><span class=o>&gt;::</span><span class=n>basic_string</span><span class=p>()</span>
+</span></span><span class=line><span class=cl>     <span class=o>:</span> <span class=n>__r_</span><span class=p>(</span><span class=n>__default_init_tag</span><span class=p>(),</span> <span class=n>__default_init_tag</span><span class=p>())</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>__default_init</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>其中，<code>__default_init_tag</code> 为一个空的结构体，定义在<code>compressed_pair.h</code> 中：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl> <span class=k>struct</span> <span class=nc>__default_init_tag</span> <span class=p>{}</span>
+</span></span></code></pre></td></tr></table></div></div><p>而 <code>__default__init</code> 的具体实现如下：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>void</span> <span class=nf>__default_init</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>__zero</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=k>if</span> <span class=p>(</span><span class=n>__libcpp_is_constant_evaluated</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>   <span class=c1>// ...
+</span></span></span><span class=line><span class=cl><span class=c1></span>   <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>其中 <code>__libcpp_is_constant_evaluated()</code> 中的代码与 <code>constexpr string</code> 有关，我们不必深究。而 <code>__zero()</code> 便为我们真正初始化的代码。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>void</span> <span class=nf>__zero</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>   <span class=n>__r_</span><span class=p>.</span><span class=n>first</span><span class=p>()</span> <span class=o>=</span> <span class=n>__rep</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>其实也就是将 <code>__r_</code> 的第一个成员 <code>__rep</code> 默认初始化，没啥好说的。</p><p>再看一段更常见更有意义的代码：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>str</span><span class=p>(</span><span class=s>&#34;Hello, world!&#34;</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><p>通过挂上 <code>gdb</code> 进行动态调试我们可以发现它调用了以下构造函数：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=err>= </span><span class=nc>__enable_if_t</span><span class=o>&lt;</span><span class=n>__is_allocator</span><span class=o>&lt;</span><span class=n>_Allocator</span><span class=o>&gt;::</span><span class=n>value</span><span class=p>,</span> <span class=n>nullptr_t</span><span class=o>&gt;</span> <span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=n>basic_string</span><span class=p>(</span><span class=k>const</span> <span class=n>_CharT</span><span class=o>*</span> <span class=n>__s</span><span class=p>)</span> <span class=o>:</span> <span class=n>__r_</span><span class=p>(</span><span class=n>__default_init_tag</span><span class=p>(),</span> <span class=n>__default_init_tag</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>   <span class=n>__init</span><span class=p>(</span><span class=n>__s</span><span class=p>,</span> <span class=n>traits_type</span><span class=o>::</span><span class=n>length</span><span class=p>(</span><span class=n>__s</span><span class=p>));</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>这段代码真正需要注意的也就是 <code>__init(__s, traits_type::length(__s));</code> 这句函数调用。而它的实现为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>_CharT</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Traits</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Allocator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span>
+</span></span><span class=line><span class=cl><span class=n>basic_string</span><span class=o>&lt;</span><span class=n>_CharT</span><span class=p>,</span> <span class=n>_Traits</span><span class=p>,</span> <span class=n>_Allocator</span><span class=o>&gt;::</span><span class=n>__init</span><span class=p>(</span><span class=k>const</span> <span class=n>value_type</span><span class=o>*</span> <span class=n>__s</span><span class=p>,</span> <span class=n>size_type</span> <span class=n>__sz</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>pointer</span> <span class=n>__p</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>__fits_in_sso</span><span class=p>(</span><span class=n>__sz</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>__set_short_size</span><span class=p>(</span><span class=n>__sz</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>__p</span> <span class=o>=</span> <span class=n>__get_short_pointer</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>else</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>auto</span> <span class=n>__allocation</span> <span class=o>=</span> <span class=n>std</span><span class=o>::</span><span class=n>__allocate_at_least</span><span class=p>(</span><span class=n>__alloc</span><span class=p>(),</span> <span class=n>__recommend</span><span class=p>(</span><span class=n>__sz</span><span class=p>)</span> <span class=o>+</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>__p</span> <span class=o>=</span> <span class=n>__allocation</span><span class=p>.</span><span class=n>ptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>__begin_lifetime</span><span class=p>(</span><span class=n>__p</span><span class=p>,</span> <span class=n>__allocation</span><span class=p>.</span><span class=n>count</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>__set_long_pointer</span><span class=p>(</span><span class=n>__p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>__set_long_cap</span><span class=p>(</span><span class=n>__allocation</span><span class=p>.</span><span class=n>count</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>__set_long_size</span><span class=p>(</span><span class=n>__sz</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=n>traits_type</span><span class=o>::</span><span class=n>copy</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>__to_address</span><span class=p>(</span><span class=n>__p</span><span class=p>),</span> <span class=n>__s</span><span class=p>,</span> <span class=n>__sz</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>traits_type</span><span class=o>::</span><span class=n>assign</span><span class=p>(</span><span class=n>__p</span><span class=p>[</span><span class=n>__sz</span><span class=p>],</span> <span class=n>value_type</span><span class=p>());</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>这里比较重要我们逐行进行讲解。首先我们判断长度是否能塞进短字符串（<code>__fits_in_sso：__sz &lt; __min_cap</code>），如果可以的话我们就调用 <code>__set_short_size</code>，即设置结构体 <code>__short</code> 的相关成员：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>void</span> <span class=nf>__set_short_size</span><span class=p>(</span><span class=n>size_type</span> <span class=n>__s</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>__r_</span><span class=p>.</span><span class=n>first</span><span class=p>().</span><span class=n>__s</span><span class=p>.</span><span class=n>__size_</span> <span class=o>=</span> <span class=n>__s</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>__r_</span><span class=p>.</span><span class=n>first</span><span class=p>().</span><span class=n>__s</span><span class=p>.</span><span class=n>__is_long_</span> <span class=o>=</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>最后拿到前面提到的短字符串数组 <code>__data_</code>的指针。</p><p>如果字符串很长没办法内联在 <code>string</code> 中，我们就要就行一个动态分配，将字符串储存在堆上。我们尤其要注意的就是 <code>auto __allocation = std::__allocate_at_least(__alloc(), __recommend(__sz) + 1);</code> 这句调用。它分配了 <code>__recommend(__sz) + 1</code> 大小的空间，负责存储字符串（后面的加一是因为还要在末尾在放一个<code>NULL terminator</code>）。而 <code>__recommend</code> 调用又是啥？难道我们不是只分配 <code>__sz + 1</code> 大小的空间就足够了吗？ 事实证明这远比我们想得要复杂：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=n>size_type</span> <span class=n>__a</span><span class=o>&gt;</span> <span class=k>static</span>
+</span></span><span class=line><span class=cl><span class=n>size_type</span> <span class=n>__align_it</span><span class=p>(</span><span class=n>size_type</span> <span class=n>__s</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span><span class=k>return</span> <span class=p>(</span><span class=n>__s</span> <span class=o>+</span> <span class=p>(</span><span class=n>__a</span><span class=o>-</span><span class=mi>1</span><span class=p>))</span> <span class=o>&amp;</span> <span class=o>~</span><span class=p>(</span><span class=n>__a</span><span class=o>-</span><span class=mi>1</span><span class=p>);}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>enum</span> <span class=p>{</span><span class=n>__alignment</span> <span class=o>=</span> <span class=mi>16</span><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>static</span> <span class=n>size_type</span> <span class=nf>__recommend</span><span class=p>(</span><span class=n>size_type</span> <span class=n>__s</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>   <span class=k>if</span> <span class=p>(</span><span class=n>__s</span> <span class=o>&lt;</span> <span class=n>__min_cap</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>     <span class=k>return</span> <span class=k>static_cast</span><span class=o>&lt;</span><span class=n>size_type</span><span class=o>&gt;</span><span class=p>(</span><span class=n>__min_cap</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=n>size_type</span> <span class=n>__guess</span> <span class=o>=</span> <span class=n>__align_it</span><span class=o>&lt;</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>&lt;</span> <span class=n>__alignment</span> <span class=o>?</span>
+</span></span><span class=line><span class=cl>                        <span class=n>__alignment</span><span class=o>/</span><span class=k>sizeof</span><span class=p>(</span><span class=n>value_type</span><span class=p>)</span> <span class=o>:</span> <span class=mi>1</span> <span class=o>&gt;</span> <span class=p>(</span><span class=n>__s</span><span class=o>+</span><span class=mi>1</span><span class=p>)</span> <span class=o>-</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>__guess</span> <span class=o>==</span> <span class=n>__min_cap</span><span class=p>)</span> <span class=o>++</span><span class=n>__guess</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=k>return</span> <span class=n>__guess</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>这段代码太复杂我懒得写了，反正就是考虑到了 alignment 的问题。</p><p>最后，将我们的字符串拷贝进 <code>__p</code> 中，也就是指向对应实际储存字符串的指针。当然别忘了还要将最后一个字符设置为 <code>NULL</code> 终止符。</p><h2 id=动态扩容>动态扩容</h2><p>在上面的讨论中，我们只考虑了字符串为短字符串或者长字符串的情形，考虑以下代码：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>std</span><span class=o>::</span><span class=n>string</span> <span class=n>str</span><span class=p>(</span><span class=s>&#34;1234567890&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>str</span><span class=p>.</span><span class=n>append</span><span class=p>(</span><span class=s>&#34;1234567890abcd&#34;</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><p>当我们尝试将另一段字符串 <code>append</code> 进 <code>std::string</code> 时，如果总的长度超过了 <code>__min_cap</code> （也就是23）该怎么办呢？</p><p>再次借助动态调试，我们可以发现我们进入了这个函数：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>_CharT</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Traits</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Allocator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=n>basic_string</span><span class=o>&lt;</span><span class=n>_CharT</span><span class=p>,</span> <span class=n>_Traits</span><span class=p>,</span> <span class=n>_Allocator</span><span class=o>&gt;&amp;</span>
+</span></span><span class=line><span class=cl><span class=n>basic_string</span><span class=o>&lt;</span><span class=n>_CharT</span><span class=p>,</span> <span class=n>_Traits</span><span class=p>,</span> <span class=n>_Allocator</span><span class=o>&gt;::</span><span class=n>append</span><span class=p>(</span><span class=k>const</span> <span class=n>value_type</span><span class=o>*</span> <span class=n>__s</span><span class=p>,</span> <span class=n>size_type</span> <span class=n>__n</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>size_type</span> <span class=n>__cap</span> <span class=o>=</span> <span class=n>capacity</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>size_type</span> <span class=n>__sz</span> <span class=o>=</span> <span class=n>size</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>__cap</span> <span class=o>-</span> <span class=n>__sz</span> <span class=o>&gt;=</span> <span class=n>__n</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=n>__n</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>value_type</span><span class=o>*</span> <span class=n>__p</span> <span class=o>=</span> <span class=n>std</span><span class=o>::</span><span class=n>__to_address</span><span class=p>(</span><span class=n>__get_pointer</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>            <span class=n>traits_type</span><span class=o>::</span><span class=n>copy</span><span class=p>(</span><span class=n>__p</span> <span class=o>+</span> <span class=n>__sz</span><span class=p>,</span> <span class=n>__s</span><span class=p>,</span> <span class=n>__n</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>            <span class=n>__sz</span> <span class=o>+=</span> <span class=n>__n</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>__set_size</span><span class=p>(</span><span class=n>__sz</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>            <span class=n>traits_type</span><span class=o>::</span><span class=n>assign</span><span class=p>(</span><span class=n>__p</span><span class=p>[</span><span class=n>__sz</span><span class=p>],</span> <span class=n>value_type</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>else</span>
+</span></span><span class=line><span class=cl>        <span class=nf>__grow_by_and_replace</span><span class=p>(</span><span class=n>__cap</span><span class=p>,</span> <span class=n>__sz</span> <span class=o>+</span> <span class=n>__n</span> <span class=o>-</span> <span class=n>__cap</span><span class=p>,</span> <span class=n>__sz</span><span class=p>,</span> <span class=n>__sz</span><span class=p>,</span> <span class=mi>0</span><span class=p>,</span> <span class=n>__n</span><span class=p>,</span> <span class=n>__s</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=o>*</span><span class=k>this</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>可以看到，当我们剩余的容量不足以储存想添加的字符串时，我们调用了 <code>__grow_by_and_replace</code> 这个函数：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>template</span> <span class=o>&lt;</span><span class=k>class</span> <span class=nc>_CharT</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Traits</span><span class=p>,</span> <span class=k>class</span> <span class=nc>_Allocator</span><span class=o>&gt;</span>
+</span></span><span class=line><span class=cl><span class=kt>void</span>
+</span></span><span class=line><span class=cl><span class=n>basic_string</span><span class=o>&lt;</span><span class=n>_CharT</span><span class=p>,</span> <span class=n>_Traits</span><span class=p>,</span> <span class=n>_Allocator</span><span class=o>&gt;::</span><span class=n>__grow_by_and_replace</span>
+</span></span><span class=line><span class=cl>    <span class=p>(</span><span class=n>size_type</span> <span class=n>__old_cap</span><span class=p>,</span> <span class=n>size_type</span> <span class=n>__delta_cap</span><span class=p>,</span> <span class=n>size_type</span> <span class=n>__old_sz</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>     <span class=n>size_type</span> <span class=n>__n_copy</span><span class=p>,</span>  <span class=n>size_type</span> <span class=n>__n_del</span><span class=p>,</span>     <span class=n>size_type</span> <span class=n>__n_add</span><span class=p>,</span> <span class=k>const</span> <span class=n>value_type</span><span class=o>*</span> <span class=n>__p_new_stuff</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>size_type</span> <span class=n>__ms</span> <span class=o>=</span> <span class=n>max_size</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>pointer</span> <span class=n>__old_p</span> <span class=o>=</span> <span class=n>__get_pointer</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>    <span class=n>size_type</span> <span class=n>__cap</span> <span class=o>=</span> <span class=n>__old_cap</span> <span class=o>&lt;</span> <span class=n>__ms</span> <span class=o>/</span> <span class=mi>2</span> <span class=o>-</span> <span class=n>__alignment</span> <span class=o>?</span>
+</span></span><span class=line><span class=cl>                          <span class=n>__recommend</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>max</span><span class=p>(</span><span class=n>__old_cap</span> <span class=o>+</span> <span class=n>__delta_cap</span><span class=p>,</span> <span class=mi>2</span> <span class=o>*</span> <span class=n>__old_cap</span><span class=p>))</span> <span class=o>:</span>
+</span></span><span class=line><span class=cl>                          <span class=n>__ms</span> <span class=o>-</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>auto</span> <span class=n>__allocation</span> <span class=o>=</span> <span class=n>std</span><span class=o>::</span><span class=n>__allocate_at_least</span><span class=p>(</span><span class=n>__alloc</span><span class=p>(),</span> <span class=n>__cap</span> <span class=o>+</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>pointer</span> <span class=n>__p</span> <span class=o>=</span> <span class=n>__allocation</span><span class=p>.</span><span class=n>ptr</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>__begin_lifetime</span><span class=p>(</span><span class=n>__p</span><span class=p>,</span> <span class=n>__allocation</span><span class=p>.</span><span class=n>count</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>__n_copy</span> <span class=o>!=</span> <span class=mi>0</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=n>traits_type</span><span class=o>::</span><span class=n>copy</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>__to_address</span><span class=p>(</span><span class=n>__p</span><span class=p>),</span>
+</span></span><span class=line><span class=cl>                          <span class=n>std</span><span class=o>::</span><span class=n>__to_address</span><span class=p>(</span><span class=n>__old_p</span><span class=p>),</span> <span class=n>__n_copy</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>__n_add</span> <span class=o>!=</span> <span class=mi>0</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=n>traits_type</span><span class=o>::</span><span class=n>copy</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>__to_address</span><span class=p>(</span><span class=n>__p</span><span class=p>)</span> <span class=o>+</span> <span class=n>__n_copy</span><span class=p>,</span> <span class=n>__p_new_stuff</span><span class=p>,</span> <span class=n>__n_add</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>size_type</span> <span class=n>__sec_cp_sz</span> <span class=o>=</span> <span class=n>__old_sz</span> <span class=o>-</span> <span class=n>__n_del</span> <span class=o>-</span> <span class=n>__n_copy</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>__sec_cp_sz</span> <span class=o>!=</span> <span class=mi>0</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=n>traits_type</span><span class=o>::</span><span class=n>copy</span><span class=p>(</span><span class=n>std</span><span class=o>::</span><span class=n>__to_address</span><span class=p>(</span><span class=n>__p</span><span class=p>)</span> <span class=o>+</span> <span class=n>__n_copy</span> <span class=o>+</span> <span class=n>__n_add</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                          <span class=n>std</span><span class=o>::</span><span class=n>__to_address</span><span class=p>(</span><span class=n>__old_p</span><span class=p>)</span> <span class=o>+</span> <span class=n>__n_copy</span> <span class=o>+</span> <span class=n>__n_del</span><span class=p>,</span> <span class=n>__sec_cp_sz</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>__old_cap</span><span class=o>+</span><span class=mi>1</span> <span class=o>!=</span> <span class=n>__min_cap</span> <span class=o>||</span> <span class=n>__libcpp_is_constant_evaluated</span><span class=p>())</span>
+</span></span><span class=line><span class=cl>        <span class=n>__alloc_traits</span><span class=o>::</span><span class=n>deallocate</span><span class=p>(</span><span class=n>__alloc</span><span class=p>(),</span> <span class=n>__old_p</span><span class=p>,</span> <span class=n>__old_cap</span><span class=o>+</span><span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>__set_long_pointer</span><span class=p>(</span><span class=n>__p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>__set_long_cap</span><span class=p>(</span><span class=n>__allocation</span><span class=p>.</span><span class=n>count</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>__old_sz</span> <span class=o>=</span> <span class=n>__n_copy</span> <span class=o>+</span> <span class=n>__n_add</span> <span class=o>+</span> <span class=n>__sec_cp_sz</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>__set_long_size</span><span class=p>(</span><span class=n>__old_sz</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>traits_type</span><span class=o>::</span><span class=n>assign</span><span class=p>(</span><span class=n>__p</span><span class=p>[</span><span class=n>__old_sz</span><span class=p>],</span> <span class=n>value_type</span><span class=p>());</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>这段代码是真的复杂，我稍微将它翻译成人话：</p><ol><li>通过计算，拿到新的 <code>__cap</code> 并进行分配，<code>__p</code> 是指向新的堆内存的指针。</li><li>将第一段旧字符串拷贝到新分配的 <code>__p</code> 中。</li><li>将我们想要 <code>append</code> 进的第二段字符串接在 <code>__p</code> 的后面。</li><li>如果我们旧的字符串的容量大于 <code>__min_cap</code>，即为长字符串，释放内存。</li><li>在 <code>__long</code> 中设置新的相关的成员，如储存字符串的指针，长度和容量。</li><li>最后在字符串最后一位加上 <code>NULL</code> 终止符。</li></ol><h2 id=写在后面>写在后面</h2><p>可以看到其实 <code>libcxx</code> 的代码读起来还是相当舒服和轻松的，后面我可能还会写写其他标准库设施的代码解读。</p><p>最后说一下如何在 Linux 下使用 Clang 和自己编译的 <code>libcxx</code> 编译 C++ 代码：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># 编译 libcxx</span>
+</span></span><span class=line><span class=cl>cmake -DCMAKE_BUILD_TYPE<span class=o>=</span>RelWithDebInfo   <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DCMAKE_EXPORT_COMPILE_COMMANDS<span class=o>=</span>YES <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DCMAKE_C_COMPILER<span class=o>=</span>clang            <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DCMAKE_CXX_COMPILER<span class=o>=</span>clang++        <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DLLVM_USE_LINKER<span class=o>=</span>lld               <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -S runtimes                         <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -B build_libcxx                     <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -G Ninja                            <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DLIBCXX_ENABLE_ASSERTIONS<span class=o>=</span>ON       <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DLLVM_ENABLE_RUNTIMES<span class=o>=</span><span class=s2>&#34;libcxx;libcxxabi;libunwind&#34;</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>ninja -C build_libcxx
+</span></span><span class=line><span class=cl>      
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1># 使用 libcxx</span>
+</span></span><span class=line><span class=cl>clang++ -nostdinc++ -nostdlib++                         <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>          -isystem /path/to/build_libcxx/include/c++/v1 <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>          -L /path/to/build_libcxx/lib                  <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>          -Wl,-rpath, /path/to/build_libcxx/lib         <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>          -lc++                                         <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>          -std<span class=o>=</span>c++20                                    <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>          test.cc -g -O0
+</span></span></code></pre></td></tr></table></div></div></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/asm_realmode/><span class=mr-1.5>←</span><span>汇编语言之实模式</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/expected_in_cxx23/><span>std::expected 基本使用</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

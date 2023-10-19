@@ -1,0 +1,166 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>C++中lambda表达式基础 - Jun's Blog</title><meta name=theme-color><meta name=description content="语法 完整语法 1 2 3 4 [ capture clause ] (parameters) -> return-type { definition of method } 简化语法 在没有形参的情况下，可以简化为： 1 [] { codes here... } 本质 lambda本质是一个函数对象，可以看作"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="C++中lambda表达式基础"><meta itemprop=description content="语法 完整语法 1 2 3 4 [ capture clause ] (parameters) -> return-type { definition of method } 简化语法 在没有形参的情况下，可以简化为： 1 [] { codes here... } 本质 lambda本质是一个函数对象，可以看作"><meta itemprop=datePublished content="2021-04-26T21:25:15+08:00"><meta itemprop=dateModified content="2021-04-26T21:25:15+08:00"><meta itemprop=wordCount content="1032"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="C++中lambda表达式基础"><meta name=twitter:description content="语法 完整语法 1 2 3 4 [ capture clause ] (parameters) -> return-type { definition of method } 简化语法 在没有形参的情况下，可以简化为： 1 [] { codes here... } 本质 lambda本质是一个函数对象，可以看作"><link rel=canonical href=https://www.junz.org/post/lambda_in_cpp/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">C++中lambda表达式基础</h1><div class="text-sm antialiased opacity-60"><time>Apr 26, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><h2 id=语法>语法</h2><h3 id=完整语法>完整语法</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-zed data-lang=zed><span class=line><span class=cl><span class=p>[</span><span class=w> </span><span class=n>capture</span><span class=w> </span><span class=n>clause</span><span class=w> </span><span class=p>]</span><span class=w> </span><span class=p>(</span><span class=n>parameters</span><span class=p>)</span><span class=w> </span><span class=o>-&gt;</span><span class=w> </span><span class=n>return</span><span class=o>-</span><span class=n>type</span><span class=w>  
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>{</span><span class=w>   
+</span></span></span><span class=line><span class=cl><span class=w>   </span><span class=kt>definition</span><span class=w> </span><span class=n>of</span><span class=w> </span><span class=n>method</span><span class=w>   
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>}</span><span class=w> 
+</span></span></span></code></pre></td></tr></table></div></div><h3 id=简化语法>简化语法</h3><p>在没有形参的情况下，可以简化为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>[] { codes here... }
+</span></span></code></pre></td></tr></table></div></div><h2 id=本质>本质</h2><p>lambda本质是一个函数对象，可以看作是重载了函数调用运算符的对象。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>struct</span> <span class=nc>absInt</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=nf>operator</span><span class=p>()(</span><span class=kt>int</span> <span class=n>val</span><span class=p>)</span> <span class=k>const</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>val</span> <span class=o>&lt;</span> <span class=mi>0</span> <span class=o>?</span> <span class=o>-</span><span class=nl>val</span> <span class=p>:</span> <span class=n>val</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>absInt</span> <span class=n>a</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>abs_a</span> <span class=o>=</span> <span class=n>a</span><span class=p>(</span><span class=mi>10</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><h3 id=举例>举例</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>(){</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>id</span> <span class=p>{</span><span class=mi>0</span><span class=p>};</span>
+</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>f</span> <span class=o>=</span> <span class=p>[</span><span class=n>id</span><span class=p>]()</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span> <span class=p>};</span>
+</span></span><span class=line><span class=cl>  <span class=n>f</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>上面这个lambda在编译器看来将是下面这个情况：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=k>class</span> <span class=nc>__lambda_8_12</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>public</span><span class=o>:</span> 
+</span></span><span class=line><span class=cl>        <span class=n>__lambda_8_12</span><span class=p>(</span><span class=kt>int</span><span class=o>&amp;</span> <span class=n>_id</span><span class=p>)</span> <span class=o>:</span> <span class=n>id</span><span class=p>{</span><span class=n>_id</span><span class=p>}</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>        <span class=kr>inline</span>  <span class=kt>void</span> <span class=nf>operator</span><span class=p>()()</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>private</span><span class=o>:</span> 
+</span></span><span class=line><span class=cl>        <span class=kt>int</span> <span class=n>id</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span></code></pre></td></tr></table></div></div><h2 id=捕获>捕获</h2><ul><li><p>捕获只能针对于lambda式的作用域内可见的非静态局部变量，包括形参。</p></li><li><p>lambda表达式可以直接使用静态变量，而不需要被捕获。</p></li></ul><h3 id=默认按值捕获>默认按值捕获</h3><p><code>[=]</code></p><p>以下面的代码为例，lambda表达式<code>f</code>捕获的<code>id</code>是值为0的那一个。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>id</span> <span class=p>{</span><span class=mi>0</span><span class=p>};</span>
+</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>f</span> <span class=o>=</span> <span class=p>[</span><span class=o>=</span><span class=p>]()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id = &#34;</span> <span class=o>&lt;&lt;</span> <span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id addr inside: &#34;</span><span class=o>&lt;&lt;</span> <span class=o>&amp;</span><span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>};</span>
+</span></span><span class=line><span class=cl>  
+</span></span><span class=line><span class=cl>  <span class=n>id</span> <span class=o>=</span> <span class=mi>100</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id addr outside: &#34;</span> <span class=o>&lt;&lt;</span> <span class=o>&amp;</span><span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>f</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>下面的代码和上面的区别在于<code>mutable</code>。不加<code>mutable</code>的情况下，<code>id</code>是只读的。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>(){</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>id</span> <span class=p>{</span><span class=mi>0</span><span class=p>};</span>
+</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>f</span> <span class=o>=</span> <span class=p>[</span><span class=o>=</span><span class=p>]()</span> <span class=k>mutable</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id = &#34;</span> <span class=o>&lt;&lt;</span> <span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id addr inside: &#34;</span><span class=o>&lt;&lt;</span> <span class=o>&amp;</span><span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=o>++</span><span class=n>id</span><span class=p>;</span><span class=c1>//没有mutable的情况下，这段代码会报错。error: read-only variable is not assignable
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=p>};</span>
+</span></span><span class=line><span class=cl>  
+</span></span><span class=line><span class=cl>  <span class=n>id</span> <span class=o>=</span> <span class=mi>100</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id addr outside: &#34;</span> <span class=o>&lt;&lt;</span> <span class=o>&amp;</span><span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>f</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=n>f</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>输出</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>id addr outside: 0x7ffe932c0b88
+</span></span><span class=line><span class=cl>id = 0
+</span></span><span class=line><span class=cl>id addr inside: 0x7ffe932c0b80
+</span></span><span class=line><span class=cl>id = 1
+</span></span><span class=line><span class=cl>id addr inside: 0x7ffe932c0b80
+</span></span></code></pre></td></tr></table></div></div><p>可以看到，lambda捕获的id是一个全新的变量，即使我们将id重新赋值为10，它也不受影响。</p><h3 id=默认按引用捕获>默认按引用捕获</h3><p><code>[&]</code></p><p>lambda表达式里的<code>id</code>和外部的<code>id</code>是同一个变量，改变外部变量的情况下也会影响内部。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>(){</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>id</span> <span class=p>{</span><span class=mi>0</span><span class=p>};</span>
+</span></span><span class=line><span class=cl>  <span class=k>auto</span> <span class=n>f</span> <span class=o>=</span> <span class=p>[</span><span class=o>&amp;</span><span class=n>id</span><span class=p>]()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id = &#34;</span> <span class=o>&lt;&lt;</span> <span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id addr inside: &#34;</span><span class=o>&lt;&lt;</span> <span class=o>&amp;</span><span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=o>++</span><span class=n>id</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=p>};</span>
+</span></span><span class=line><span class=cl>  
+</span></span><span class=line><span class=cl>  <span class=n>id</span> <span class=o>=</span> <span class=mi>100</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;id addr outside: &#34;</span> <span class=o>&lt;&lt;</span> <span class=o>&amp;</span><span class=n>id</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>f</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=n>f</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=mi>0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>输出</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>id addr outside: 0x7ffde0080a68
+</span></span><span class=line><span class=cl>id = 100
+</span></span><span class=line><span class=cl>id addr inside: 0x7ffde0080a68
+</span></span><span class=line><span class=cl>id = 101
+</span></span><span class=line><span class=cl>id addr inside: 0x7ffde0080a68
+</span></span></code></pre></td></tr></table></div></div><p>可以看到，lambda内部捕获的id就是外部的那个，当我们对其重新赋值的时候，lamnda内部也该改变了。</p><p>但是这种按引用捕获可能会导致闭包包含局部变量的引用，当局部变量的生命周期结束后，lamnda将失效，从而引起未定义的行为。</p><h3 id=初始化捕获广义lambda捕获-c14>初始化捕获/广义lambda捕获 (C++14)</h3><p>在=号的两边，是不同的作用域。在其左边，是lambda的成员变量，而在右边，则是初始化表达式。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>[a=a]
+</span></span><span class=line><span class=cl>[a=std::move(a)]
+</span></span><span class=line><span class=cl>[a=std::unique_ptr&lt;a&gt;()]
+</span></span></code></pre></td></tr></table></div></div><ul><li>第一个表达式可以看作是在lambda中创建一个id变量，直接用外部的id初始化它。从此二者分离开，互不干扰。</li><li>第二个表达式可以看作是在lambda中创建一个id变量，用外部的id的右值去初始化它。</li><li>第三个表达式中，我们甚至可以直接在lambda表达式中初始化id变量。</li></ul></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/dict_in_redis/><span class=mr-1.5>←</span><span>由Redis学习数据结构--字典</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/linked_list_in_redis/><span>由Redis学习数据结构--链表</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

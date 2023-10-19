@@ -1,0 +1,79 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>如何给LLVM贡献代码 - Jun's Blog</title><meta name=theme-color><meta name=description content="LLVM 简介 LLVM的代码托管在Github，截止到这篇博客 发出时，其Bug tracker 已经从原来的Bugzilla 成功迁移到了Github issue上， 具"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="如何给LLVM贡献代码"><meta itemprop=description content="LLVM 简介 LLVM的代码托管在Github，截止到这篇博客 发出时，其Bug tracker 已经从原来的Bugzilla 成功迁移到了Github issue上， 具"><meta itemprop=datePublished content="2021-12-11T20:50:50+08:00"><meta itemprop=dateModified content="2021-12-11T20:50:50+08:00"><meta itemprop=wordCount content="1517"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="如何给LLVM贡献代码"><meta name=twitter:description content="LLVM 简介 LLVM的代码托管在Github，截止到这篇博客 发出时，其Bug tracker 已经从原来的Bugzilla 成功迁移到了Github issue上， 具"><link rel=canonical href=https://www.junz.org/post/contribute_to_llvm/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">如何给LLVM贡献代码</h1><div class="text-sm antialiased opacity-60"><time>Dec 11, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><h2 id=llvm-简介>LLVM 简介</h2><p>LLVM的代码托管在<a href=https://github.com/llvm/llvm-project>Github</a>，截止到这篇博客
+发出时，其Bug tracker 已经从原来的<a href=https://bugs.llvm.org/>Bugzilla</a> 成功迁移到了<a href=https://github.com/llvm/llvm-project/issues>Github issue</a>上，
+具体可以看这封<a href=https://lists.llvm.org/pipermail/cfe-dev/2021-December/069580.html>邮件</a>。但是LLVM暂时不接受，或者说主项目不接受Github PR, 而是使用<a href=https://reviews.llvm.org/>Phabricator</a>。</p><h2 id=编译安装>编译安装</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>git clone https://github.com/llvm/llvm-project.git
+</span></span></code></pre></td></tr></table></div></div><p>如果不希望保留以前的Git历史的话，可以使用：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>git clone --depth<span class=o>=</span><span class=m>1</span> https://github.com/llvm/llvm-project.git
+</span></span></code></pre></td></tr></table></div></div><p>这会极大减少下载时间和硬盘占用。</p><h3 id=构建工具>构建工具</h3><p>因为LLVM是使用C++14标准写的（实际上使用了很多C++17特性），所以我们要保证我们的编译器支持其标准，以及有其它配套的构建工具：</p><ul><li>ninja</li><li>cmake</li><li>gcc/clang/MSVC</li><li>ccache</li><li>gold</li></ul><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=nb>cd</span> llvm-project
+</span></span><span class=line><span class=cl>mkdir build <span class=o>&amp;&amp;</span> <span class=nb>cd</span> build
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>cmake -DCMAKE_BUILD_TYPE<span class=o>=</span>Release  <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DLLVM_TARGETS_TO_BUILD<span class=o>=</span>X86 <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>	  -DLLVM_USE_LINKER<span class=o>=</span>gold      <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DBUILD_SHARED_LIBS<span class=o>=</span>ON      <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -DLLVM_CCACHE_BUILD<span class=o>=</span>ON      <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>	  -DLLVM_APPEND_VC_REV<span class=o>=</span>OFF     <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>	  -DLLVM_ENABLE_PROJECTS<span class=o>=</span><span class=s2>&#34;clang;clang-tools-extra&#34;</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>      -G<span class=s2>&#34;Ninja&#34;</span> ../llvm
+</span></span></code></pre></td></tr></table></div></div><p>可以看到在cmake配置中我们使用了大量额外选项，这主要是为了减少编译时间和硬盘占用：</p><ul><li><code>DLLVM_USE_LINKER=gold</code> 使用gold而不是默认的ld，这可以减少链接时的内存消耗</li><li><code>BUILD_SHARED_LIBS=ON</code> 默认LLVM会使用静态链接，这会导致非常夸张的硬盘消耗，个人建议
+使用shared library。</li><li><code>DLLVM_CCACHE_BUILD=ON</code> 使用ccache， 这样当我们修改代码重新编译后只会编译修改的部分，
+便免消耗时间重新编译未更改的代码。</li><li><code>Ninja</code> 可以比<code>make</code>更快地编译。</li><li><code>LLVM_APPEND_VC_REV=OFF</code> 避免git pull后无意义的重新链接</li><li><code>LLVM_ENABLE_PROJECTS</code>可以选择启用的子项目，我们这里只编译<code>clang</code>和<code>clang-tools-extra</code>。</li></ul><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>ninja
+</span></span></code></pre></td></tr></table></div></div><h2 id=提交代码>提交代码</h2><p>前面说到LLVM使用的是Phabricator，而不是Github PR。如果你需要在<a href="https://reviews.llvm.org/auth/start/?next=%2F">Phabricator</a>注册一个账号，可以直接将Github账号绑定在一起。</p><p>在命令行中提交代码个人认为比较简单，只要使用官方提供的工具arcanist即可。当然使用Web界面也是可以的，但是要麻烦的多，具体可以看LLVM官方的<a href=https://llvm.org/docs/Phabricator.html#requesting-a-review-via-the-web-interface>文档</a>。</p><p>下载安装：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>git clone https://github.com/phacility/arcanist.git
+</span></span><span class=line><span class=cl><span class=nb>cd</span> arcanist
+</span></span><span class=line><span class=cl>git fetch https://github.com/rashkov/arcanist update_cacerts
+</span></span></code></pre></td></tr></table></div></div><p>将其添加到环境变量中：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=k>export</span> <span class=n>PATH</span><span class=o>=</span><span class=s2>&#34;$PATH:/somewhere/arcanist/bin/&#34;</span>
+</span></span></code></pre></td></tr></table></div></div><p>授权登陆：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>arc install-certificate
+</span></span></code></pre></td></tr></table></div></div><p>在写代码的时候可以使用<code>git commit --amend</code>将多个提交压缩成一个，从而以patch的形式发出去。
+举个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>git checkout -b patch
+</span></span><span class=line><span class=cl><span class=c1># make some changes</span>
+</span></span><span class=line><span class=cl>git add .
+</span></span><span class=line><span class=cl>git commit
+</span></span><span class=line><span class=cl><span class=c1># make more changes</span>
+</span></span><span class=line><span class=cl>git commit --amend -a
+</span></span></code></pre></td></tr></table></div></div><p>当我们的patch在本地通过测试后，便可以准备发出去了,但在此之前一定要注意用<code>clang-format</code>保证我们的
+patch符合LLVM Coding Style。</p><p>建议使用LLVM官方提供的<code>git-clang-format</code>工具，效果最好，避免意外修改到其他的代码。
+可以直接将<a href=https://github.com/llvm/llvm-project/blob/main/clang/tools/clang-format/git-clang-format>git-clang-format</a>复制一份到PATH所在的路径中就可以了，比如<code>/usr/local/bin</code>。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>git clang-format HEAD~1
+</span></span></code></pre></td></tr></table></div></div><p>注意format后并不会自动提交，所以你需要：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>git commit --amend -a
+</span></span></code></pre></td></tr></table></div></div><h3 id=寻找reviewer>寻找Reviewer</h3><p>arcanist提供了一个选项帮助我们寻找潜在的Reviewer:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>arc cover
+</span></span></code></pre></td></tr></table></div></div><p>这会在终端中显示同样修改过最近一个commit中的文件的所有人。注意显示的只是修改者的人名，
+而我们需要的是他们在Phabricator中的账号名。此后：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>arc diff --reviewers<span class=o>=</span>account1,account2
+</span></span></code></pre></td></tr></table></div></div><p>接着你便需要写一个title和summary，这个之后会作为commit message。成功后arcanist会给我们
+一个链接，这便是我们的Revision啦。</p><h3 id=更新patch>更新patch</h3><p>再Reviewer看过代码后，可能会给我们一些修改的建议，我们可以继续使用arcanist更新我们的patch:</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl><span class=c1># make some changes</span>
+</span></span><span class=line><span class=cl>git commit --amend -a
+</span></span></code></pre></td></tr></table></div></div><p>其中<code>DXXXXX</code>是我们之前的Revision，因为arcanist无法知道上下文，所以我们必须手动指定。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>arc diff `git merge-base HEAD origin` --update DXXXXX
+</span></span></code></pre></td></tr></table></div></div><h2 id=社区支持>社区支持</h2><p>LLVM有一个非常活跃，非常热情的社区。如果遇到了任何问题，完全可以寻找社区的帮助，那里有大量的志愿者非常乐意回答你的问题。当然，和所有成熟的开源项目一样，LLVM有着非常丰富的文档，善于从文档中寻找解决答案也是一项重要的技能。</p><ul><li><a href=https://lists.llvm.org/mailman/listinfo>邮件列表</a></li><li><a href=irc://irc.oftc.net/llvm>IRC</a></li><li><a href=https://llvm.discourse.group/>Discourse</a></li><li><a href=https://discord.gg/xS7Z362>Discord</a></li></ul><p>Happy Hacking :^)</p></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/compile_install_latest_gcc/><span class=mr-1.5>←</span><span>编译安装GCC12</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/csapp_chap3_part2/><span>CSAPP第三章笔记Part 2</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

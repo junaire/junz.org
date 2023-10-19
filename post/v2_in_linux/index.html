@@ -1,0 +1,293 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Linux下使用v2ray - Jun's Blog</title><meta name=theme-color><meta name=description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="Linux下使用v2ray"><meta itemprop=description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><meta itemprop=datePublished content="2021-02-28T16:06:32+08:00"><meta itemprop=dateModified content="2021-02-28T16:06:32+08:00"><meta itemprop=wordCount content="1434"><meta itemprop=keywords content="Linux,proxy,"><meta name=twitter:card content="summary"><meta name=twitter:title content="Linux下使用v2ray"><meta name=twitter:description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><link rel=canonical href=https://www.junz.org/post/v2_in_linux/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">Linux下使用v2ray</h1><div class="text-sm antialiased opacity-60"><time>Feb 28, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><p>v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端和客户端的，只要配置好相关文件，即可正常使用．</p><h2 id=安装v2ray>安装v2ray</h2><p>下载v2ray core</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>https://github.com/v2ray/v2ray-core/releases/
+</span></span></code></pre></td></tr></table></div></div><p>解压：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>unzip v2ray-linux-64.zip -d v2ray-linux-64
+</span></span></code></pre></td></tr></table></div></div><p>解压后使用<code>mv</code>将相应的文件放置到对应的路径</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>v2ray -&gt; /usr/local/bin/v2ray
+</span></span><span class=line><span class=cl>v2ctl -&gt; /usr/local/bin/v2ctl
+</span></span><span class=line><span class=cl>geoip.dat -&gt; /usr/local/share/v2ray/geoip.dat
+</span></span><span class=line><span class=cl>geosite.dat -&gt; /usr/local/share/v2ray/geosite.dat
+</span></span><span class=line><span class=cl>config.json -&gt; /usr/local/etc/v2ray/config.json
+</span></span><span class=line><span class=cl>access.log -&gt; /var/log/v2ray/access.log
+</span></span><span class=line><span class=cl>error.log -&gt; /var/log/v2ray/error.log
+</span></span><span class=line><span class=cl>v2ray.service -&gt; /etc/systemd/system/v2ray.service
+</span></span><span class=line><span class=cl>v2ray@.service -&gt; /etc/systemd/system/v2ray@.service
+</span></span></code></pre></td></tr></table></div></div><ul><li><p>日志文件要保证所有人都有读写权限</p></li><li><p>要在配置文件中指定日志路径</p></li></ul><h2 id=配置文件>配置文件</h2><p>注意原生的V2ray并不支持订阅。</p><p>以下配置文件仅为参考，你可以将其它客户端中的配置文件完全导出，然后直接替换<code>/usr/local/etc/v2ray/config.json</code></p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>  1
+</span><span class=lnt>  2
+</span><span class=lnt>  3
+</span><span class=lnt>  4
+</span><span class=lnt>  5
+</span><span class=lnt>  6
+</span><span class=lnt>  7
+</span><span class=lnt>  8
+</span><span class=lnt>  9
+</span><span class=lnt> 10
+</span><span class=lnt> 11
+</span><span class=lnt> 12
+</span><span class=lnt> 13
+</span><span class=lnt> 14
+</span><span class=lnt> 15
+</span><span class=lnt> 16
+</span><span class=lnt> 17
+</span><span class=lnt> 18
+</span><span class=lnt> 19
+</span><span class=lnt> 20
+</span><span class=lnt> 21
+</span><span class=lnt> 22
+</span><span class=lnt> 23
+</span><span class=lnt> 24
+</span><span class=lnt> 25
+</span><span class=lnt> 26
+</span><span class=lnt> 27
+</span><span class=lnt> 28
+</span><span class=lnt> 29
+</span><span class=lnt> 30
+</span><span class=lnt> 31
+</span><span class=lnt> 32
+</span><span class=lnt> 33
+</span><span class=lnt> 34
+</span><span class=lnt> 35
+</span><span class=lnt> 36
+</span><span class=lnt> 37
+</span><span class=lnt> 38
+</span><span class=lnt> 39
+</span><span class=lnt> 40
+</span><span class=lnt> 41
+</span><span class=lnt> 42
+</span><span class=lnt> 43
+</span><span class=lnt> 44
+</span><span class=lnt> 45
+</span><span class=lnt> 46
+</span><span class=lnt> 47
+</span><span class=lnt> 48
+</span><span class=lnt> 49
+</span><span class=lnt> 50
+</span><span class=lnt> 51
+</span><span class=lnt> 52
+</span><span class=lnt> 53
+</span><span class=lnt> 54
+</span><span class=lnt> 55
+</span><span class=lnt> 56
+</span><span class=lnt> 57
+</span><span class=lnt> 58
+</span><span class=lnt> 59
+</span><span class=lnt> 60
+</span><span class=lnt> 61
+</span><span class=lnt> 62
+</span><span class=lnt> 63
+</span><span class=lnt> 64
+</span><span class=lnt> 65
+</span><span class=lnt> 66
+</span><span class=lnt> 67
+</span><span class=lnt> 68
+</span><span class=lnt> 69
+</span><span class=lnt> 70
+</span><span class=lnt> 71
+</span><span class=lnt> 72
+</span><span class=lnt> 73
+</span><span class=lnt> 74
+</span><span class=lnt> 75
+</span><span class=lnt> 76
+</span><span class=lnt> 77
+</span><span class=lnt> 78
+</span><span class=lnt> 79
+</span><span class=lnt> 80
+</span><span class=lnt> 81
+</span><span class=lnt> 82
+</span><span class=lnt> 83
+</span><span class=lnt> 84
+</span><span class=lnt> 85
+</span><span class=lnt> 86
+</span><span class=lnt> 87
+</span><span class=lnt> 88
+</span><span class=lnt> 89
+</span><span class=lnt> 90
+</span><span class=lnt> 91
+</span><span class=lnt> 92
+</span><span class=lnt> 93
+</span><span class=lnt> 94
+</span><span class=lnt> 95
+</span><span class=lnt> 96
+</span><span class=lnt> 97
+</span><span class=lnt> 98
+</span><span class=lnt> 99
+</span><span class=lnt>100
+</span><span class=lnt>101
+</span><span class=lnt>102
+</span><span class=lnt>103
+</span><span class=lnt>104
+</span><span class=lnt>105
+</span><span class=lnt>106
+</span><span class=lnt>107
+</span><span class=lnt>108
+</span><span class=lnt>109
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>{
+</span></span><span class=line><span class=cl>  &#34;dns&#34;: {
+</span></span><span class=line><span class=cl>    &#34;hosts&#34;: {
+</span></span><span class=line><span class=cl>      &#34;domain:googleapis.cn&#34;: &#34;googleapis.com&#34;
+</span></span><span class=line><span class=cl>    },
+</span></span><span class=line><span class=cl>    &#34;servers&#34;: [
+</span></span><span class=line><span class=cl>      &#34;1.1.1.1&#34;
+</span></span><span class=line><span class=cl>    ]
+</span></span><span class=line><span class=cl>  },
+</span></span><span class=line><span class=cl>  &#34;inbounds&#34;: [
+</span></span><span class=line><span class=cl>    {
+</span></span><span class=line><span class=cl>      &#34;listen&#34;: &#34;127.0.0.1&#34;,
+</span></span><span class=line><span class=cl>      &#34;port&#34;: 10808,
+</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;socks&#34;,
+</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
+</span></span><span class=line><span class=cl>        &#34;auth&#34;: &#34;noauth&#34;,
+</span></span><span class=line><span class=cl>        &#34;udp&#34;: true,
+</span></span><span class=line><span class=cl>        &#34;userLevel&#34;: 8
+</span></span><span class=line><span class=cl>      },
+</span></span><span class=line><span class=cl>      &#34;sniffing&#34;: {
+</span></span><span class=line><span class=cl>        &#34;destOverride&#34;: [
+</span></span><span class=line><span class=cl>          &#34;http&#34;,
+</span></span><span class=line><span class=cl>          &#34;tls&#34;
+</span></span><span class=line><span class=cl>        ],
+</span></span><span class=line><span class=cl>        &#34;enabled&#34;: true
+</span></span><span class=line><span class=cl>      },
+</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;socks&#34;
+</span></span><span class=line><span class=cl>    },
+</span></span><span class=line><span class=cl>    {
+</span></span><span class=line><span class=cl>      &#34;listen&#34;: &#34;127.0.0.1&#34;,
+</span></span><span class=line><span class=cl>      &#34;port&#34;: 10809,
+</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;http&#34;,
+</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
+</span></span><span class=line><span class=cl>        &#34;userLevel&#34;: 8
+</span></span><span class=line><span class=cl>      },
+</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;http&#34;
+</span></span><span class=line><span class=cl>    }
+</span></span><span class=line><span class=cl>  ],
+</span></span><span class=line><span class=cl>  &#34;log&#34;: {
+</span></span><span class=line><span class=cl>    &#34;loglevel&#34;: &#34;warning&#34;,
+</span></span><span class=line><span class=cl>    &#34;access&#34;:&#34;/var/log/v2ray/access.log&#34;,
+</span></span><span class=line><span class=cl>    &#34;error&#34;:&#34;/var/log/v2ray/error.log&#34;
+</span></span><span class=line><span class=cl>  },
+</span></span><span class=line><span class=cl>  &#34;outbounds&#34;: [
+</span></span><span class=line><span class=cl>    {
+</span></span><span class=line><span class=cl>    //此处根据具体设置
+</span></span><span class=line><span class=cl>      &#34;mux&#34;: {
+</span></span><span class=line><span class=cl>        &#34;concurrency&#34;: -1,
+</span></span><span class=line><span class=cl>        &#34;enabled&#34;: false
+</span></span><span class=line><span class=cl>      },
+</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;vmess&#34;,
+</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
+</span></span><span class=line><span class=cl>        &#34;vnext&#34;: [
+</span></span><span class=line><span class=cl>          {
+</span></span><span class=line><span class=cl>          //此处根据具体设置
+</span></span><span class=line><span class=cl>            &#34;address&#34;: &#34;example.com&#34;,
+</span></span><span class=line><span class=cl>            &#34;port&#34;: 10000,
+</span></span><span class=line><span class=cl>            &#34;users&#34;: [
+</span></span><span class=line><span class=cl>              {
+</span></span><span class=line><span class=cl>                &#34;alterId&#34;: 0,
+</span></span><span class=line><span class=cl>                &#34;id&#34;: &#34;xxxxxxxxxxxx&#34;,
+</span></span><span class=line><span class=cl>                &#34;level&#34;: 8,
+</span></span><span class=line><span class=cl>                &#34;security&#34;: &#34;auto&#34;
+</span></span><span class=line><span class=cl>              }
+</span></span><span class=line><span class=cl>            ]
+</span></span><span class=line><span class=cl>          }
+</span></span><span class=line><span class=cl>        ]
+</span></span><span class=line><span class=cl>      },
+</span></span><span class=line><span class=cl>      &#34;streamSettings&#34;: {
+</span></span><span class=line><span class=cl>        &#34;network&#34;: &#34;tcp&#34;,
+</span></span><span class=line><span class=cl>        &#34;security&#34;: &#34;&#34;
+</span></span><span class=line><span class=cl>      },
+</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;proxy&#34;
+</span></span><span class=line><span class=cl>    },
+</span></span><span class=line><span class=cl>    {
+</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;freedom&#34;,
+</span></span><span class=line><span class=cl>      &#34;settings&#34;: {},
+</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;direct&#34;
+</span></span><span class=line><span class=cl>    },
+</span></span><span class=line><span class=cl>    {
+</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;blackhole&#34;,
+</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
+</span></span><span class=line><span class=cl>        &#34;response&#34;: {
+</span></span><span class=line><span class=cl>          &#34;type&#34;: &#34;http&#34;
+</span></span><span class=line><span class=cl>        }
+</span></span><span class=line><span class=cl>      },
+</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;block&#34;
+</span></span><span class=line><span class=cl>    }
+</span></span><span class=line><span class=cl>  ],
+</span></span><span class=line><span class=cl>  &#34;policy&#34;: {
+</span></span><span class=line><span class=cl>    &#34;levels&#34;: {
+</span></span><span class=line><span class=cl>      &#34;8&#34;: {
+</span></span><span class=line><span class=cl>        &#34;connIdle&#34;: 300,
+</span></span><span class=line><span class=cl>        &#34;downlinkOnly&#34;: 1,
+</span></span><span class=line><span class=cl>        &#34;handshake&#34;: 4,
+</span></span><span class=line><span class=cl>        &#34;uplinkOnly&#34;: 1
+</span></span><span class=line><span class=cl>      }
+</span></span><span class=line><span class=cl>    },
+</span></span><span class=line><span class=cl>    &#34;system&#34;: {
+</span></span><span class=line><span class=cl>      &#34;statsOutboundUplink&#34;: true,
+</span></span><span class=line><span class=cl>      &#34;statsOutboundDownlink&#34;: true
+</span></span><span class=line><span class=cl>    }
+</span></span><span class=line><span class=cl>  },
+</span></span><span class=line><span class=cl>  &#34;routing&#34;: {
+</span></span><span class=line><span class=cl>    &#34;domainStrategy&#34;: &#34;IPIfNonMatch&#34;,
+</span></span><span class=line><span class=cl>    &#34;rules&#34;: []
+</span></span><span class=line><span class=cl>  },
+</span></span><span class=line><span class=cl>  &#34;stats&#34;: {}
+</span></span><span class=line><span class=cl>}
+</span></span></code></pre></td></tr></table></div></div><h2 id=使用v2ray>使用V2ray</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl># 启动V2ray
+</span></span><span class=line><span class=cl>sudo systemctl start v2ray
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl># 检查V2ray状态
+</span></span><span class=line><span class=cl>sudo systemctl status v2ray
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl># 设置V2ray开机自启动
+</span></span><span class=line><span class=cl>sudo systemctl enable v2ray
+</span></span></code></pre></td></tr></table></div></div><h2 id=检验代理是否成功生效>检验代理是否成功生效</h2><p>终端下使用curl，查看它在代理模式下是否能返回数据：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>curl -x socks5://127.0.0.1:10808 https://www.google.com -v
+</span></span></code></pre></td></tr></table></div></div><p>如果能返回google.com的源代码，即表示配置成功。</p><p>如果显示超时或者无法建立连接，即表示配置有错误，具体可以查看日志排查原因。</p><h2 id=系统设置>系统设置</h2><p>当我们配置好代理后，我们很多情况下并不能开箱即用，而是需要将代理信息写入相关配置文件后，才能使用。具体操作如下：</p><h3 id=设置处启用代理并填入相关端口>设置处启用代理，并填入相关端口</h3><p>打开设置，选择网络->代理->手动 并填入相应端口</p><p>此操作后可以使用浏览器测试是否能正常打开网页,如果还是失败的话，考虑修改浏览器自带的代理配置。</p><h3 id=将代理设置写入shell-profile>将代理设置写入shell profile</h3><p>虽然我们设置了系统代理，但是终端下并不会走代理，所以还要配置以下设置</p><p>将此行写入用户的<code>shell profile</code>
+如果使用的是<code>bash</code>，写入<code>~/.bashrc</code>，如果是<code>zsh</code>，写入<code>~/.zshrc</code>
+如果不确定，就直接写入<code>~/.bashrc</code></p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>//端口具体情况具体对待，不清楚打开代理工具看一下．
+</span></span><span class=line><span class=cl>export ALL_PROXY=&#34;socks5://127.0.0.1:10808&#34;
+</span></span><span class=line><span class=cl>export http_proxy=&#34;http://127.0.0.1:10809&#34;
+</span></span></code></pre></td></tr></table></div></div><p>然后我们要让配置文件生效．</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>source ~/.bashrc
+</span></span></code></pre></td></tr></table></div></div><p>如果还是无法走代理可以试试重开一个终端．</p><h3 id=使用proxychains>使用proxychains</h3><p>对于某些不会走<code>socks5</code>的应用，我们还可以通过<a href=https://github.com/haad/proxychains>proxychains</a>，使它强制走代理</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/proxychains.conf
+</span></span><span class=line><span class=cl>//编辑配置文件，取消sock4配置，加入这一行
+</span></span><span class=line><span class=cl>socks5 127.0.0.1 10808
+</span></span></code></pre></td></tr></table></div></div><p>此后，直接在原始命令前加一个<code>proxychains</code>，便可走代理．比如：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>proxychains wget https://example.com/index.html
+</span></span></code></pre></td></tr></table></div></div><h3 id=ssh走socks5代理><code>ssh</code>走<code>socks5</code>代理</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>ssh -o &#34;ProxyCommand=nc -X 5 -x 127.0.0.1:10808 %h %p&#34; user@hostname
+</span></span></code></pre></td></tr></table></div></div><p>其中端口按实际情况修改，
+如果想永久保持使用，可以使用<code>alias</code>做一个别名。</p><p>注意这里需要先安装<code>nc</code></p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>alias pssh=&#39;ssh -o &#34;ProxyCommand=nc -X 5 -x 127.0.0.1:10808 %h %p&#34;&#39;
+</span></span></code></pre></td></tr></table></div></div><p>这里为了区分原始的<code>ssh</code>，我们创建了一个<code>pssh</code>，下次对于需要使用代理的，把<code>ssh</code>换成<code>pssh</code>即可．
+将此行写入用户的<code>shell profile</code>
+如果使用的是<code>bash</code>，写入<code>~/.bashrc</code>，如果是<code>zsh</code>，写入<code>~/.zshrc</code>
+如果不确定，就直接写入<code>~/.bashrc</code></p></section><footer class="mt-12 flex flex-wrap"><a class="mb-1.5 mr-1.5 rounded-lg bg-black/[3%] px-5 py-1.5 no-underline dark:bg-white/[8%]" href=https://www.junz.org/tags/linux>Linux</a>
+<a class="mb-1.5 mr-1.5 rounded-lg bg-black/[3%] px-5 py-1.5 no-underline dark:bg-white/[8%]" href=https://www.junz.org/tags/proxy>proxy</a></footer><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/https_ssl/><span class=mr-1.5>←</span><span>浅谈HTTPS证书</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/amusing_ourselves_to_death/><span>娱乐至死读书笔记</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

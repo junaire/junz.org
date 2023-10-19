@@ -1,0 +1,240 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>LLVM 中端优化之 InstCombine - Jun's Blog</title><meta name=theme-color><meta name=description content="InstCombine 是 LLVM 中的一个窥孔式的优化，为 LLVM 在 canonicalize IR 过程中的一个重要组成部分。这个 Pass 的主要目的就是尽可能地根据数学规则合并优化 IR，同时将 IR 归一化。 代码实"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="LLVM 中端优化之 InstCombine"><meta itemprop=description content="InstCombine 是 LLVM 中的一个窥孔式的优化，为 LLVM 在 canonicalize IR 过程中的一个重要组成部分。这个 Pass 的主要目的就是尽可能地根据数学规则合并优化 IR，同时将 IR 归一化。 代码实"><meta itemprop=datePublished content="2023-07-18T16:45:13+08:00"><meta itemprop=dateModified content="2023-07-18T16:45:13+08:00"><meta itemprop=wordCount content="3240"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="LLVM 中端优化之 InstCombine"><meta name=twitter:description content="InstCombine 是 LLVM 中的一个窥孔式的优化，为 LLVM 在 canonicalize IR 过程中的一个重要组成部分。这个 Pass 的主要目的就是尽可能地根据数学规则合并优化 IR，同时将 IR 归一化。 代码实"><link rel=canonical href=https://www.junz.org/post/llvm_instcombine/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">LLVM 中端优化之 InstCombine</h1><div class="text-sm antialiased opacity-60"><time>Jul 18, 2023</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><p>InstCombine 是 LLVM 中的一个窥孔式的优化，为 LLVM 在 canonicalize IR 过程中的一个重要组成部分。这个 Pass 的主要目的就是尽可能地根据数学规则合并优化 IR，同时将 IR 归一化。</p><h2 id=代码实现>代码实现</h2><p>整个算法是一个基于 Worklist 的一个算法，首先会将一个 <code>llvm::Function</code> 中的所有指令放到一个工作集中，然后不停从 worklist 中取一个指令使用访问者模式处理，直到 worklist 为空，或达到最大迭代次数（说明优化器卡死了）。</p><p>InstCombine 关于填充 worklist 的代码 (<a href=https://github.com/llvm/llvm-project/blob/a5cee3e386bde28ce21ff2ead3fc420f018604ca/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp#L4035>https://github.com/llvm/llvm-project/blob/a5cee3e386bde28ce21ff2ead3fc420f018604ca/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp#L4035</a>)：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span><span class=lnt>44
+</span><span class=lnt>45
+</span><span class=lnt>46
+</span><span class=lnt>47
+</span><span class=lnt>48
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=c1>/// Populate the IC worklist from a function, by walking it in depth-first
+</span></span></span><span class=line><span class=cl><span class=c1>/// order and adding all reachable code to the worklist.
+</span></span></span><span class=line><span class=cl><span class=c1>///
+</span></span></span><span class=line><span class=cl><span class=c1>/// This has a couple of tricks to make the code faster and more powerful.  In
+</span></span></span><span class=line><span class=cl><span class=c1>/// particular, we constant fold and DCE instructions as we go, to avoid adding
+</span></span></span><span class=line><span class=cl><span class=c1>/// them to the worklist (this significantly speeds up instcombine on code where
+</span></span></span><span class=line><span class=cl><span class=c1>/// many instructions are dead or constant).  Additionally, if we find a branch
+</span></span></span><span class=line><span class=cl><span class=c1>/// whose condition is a known constant, we only visit the reachable successors.
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>static</span> <span class=kt>bool</span> <span class=nf>prepareICWorklistFromFunction</span><span class=p>(</span><span class=n>Function</span> <span class=o>&amp;</span><span class=n>F</span><span class=p>,</span> <span class=k>const</span> <span class=n>DataLayout</span> <span class=o>&amp;</span><span class=n>DL</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                                          <span class=k>const</span> <span class=n>TargetLibraryInfo</span> <span class=o>*</span><span class=n>TLI</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                                          <span class=n>InstructionWorklist</span> <span class=o>&amp;</span><span class=n>ICWorklist</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=kt>bool</span> <span class=n>MadeIRChange</span> <span class=o>=</span> <span class=nb>false</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>SmallPtrSet</span><span class=o>&lt;</span><span class=n>BasicBlock</span> <span class=o>*</span><span class=p>,</span> <span class=mi>32</span><span class=o>&gt;</span> <span class=n>Visited</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>SmallVector</span><span class=o>&lt;</span><span class=n>BasicBlock</span><span class=o>*</span><span class=p>,</span> <span class=mi>256</span><span class=o>&gt;</span> <span class=n>Worklist</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>Worklist</span><span class=p>.</span><span class=n>push_back</span><span class=p>(</span><span class=o>&amp;</span><span class=n>F</span><span class=p>.</span><span class=n>front</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=n>SmallVector</span><span class=o>&lt;</span><span class=n>Instruction</span> <span class=o>*</span><span class=p>,</span> <span class=mi>128</span><span class=o>&gt;</span> <span class=n>InstrsForInstructionWorklist</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>DenseMap</span><span class=o>&lt;</span><span class=n>Constant</span> <span class=o>*</span><span class=p>,</span> <span class=n>Constant</span> <span class=o>*&gt;</span> <span class=n>FoldedConstants</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>AliasScopeTracker</span> <span class=n>SeenAliasScopes</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=k>do</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>BasicBlock</span> <span class=o>*</span><span class=n>BB</span> <span class=o>=</span> <span class=n>Worklist</span><span class=p>.</span><span class=n>pop_back_val</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=c1>// We have now visited this block!  If we&#39;ve already been here, ignore it.
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>Visited</span><span class=p>.</span><span class=n>insert</span><span class=p>(</span><span class=n>BB</span><span class=p>).</span><span class=n>second</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>      <span class=k>continue</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=n>Instruction</span> <span class=o>&amp;</span><span class=nl>Inst</span> <span class=p>:</span> <span class=n>llvm</span><span class=o>::</span><span class=n>make_early_inc_range</span><span class=p>(</span><span class=o>*</span><span class=n>BB</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// 常量折叠指令，如果可能。
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 如果 terminator 是分支指令，看看有没有明显不可达的分支，若有则跳过。
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=p>}</span> <span class=k>while</span> <span class=p>(</span><span class=o>!</span><span class=n>Worklist</span><span class=p>.</span><span class=n>empty</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 删掉所有不可达的基本块。
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl>  <span class=c1>// Once we&#39;ve found all of the instructions to add to instcombine&#39;s worklist,
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// add them in reverse order.  This way instcombine will visit from the top
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// of the function down.  This jives well with the way that it adds all uses
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// of instructions to the worklist after doing a transformation, thus avoiding
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// some N^2 behavior in pathological cases.
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>ICWorklist</span><span class=p>.</span><span class=n>reserve</span><span class=p>(</span><span class=n>InstrsForInstructionWorklist</span><span class=p>.</span><span class=n>size</span><span class=p>());</span>
+</span></span><span class=line><span class=cl>  <span class=k>for</span> <span class=p>(</span><span class=n>Instruction</span> <span class=o>*</span><span class=nl>Inst</span> <span class=p>:</span> <span class=n>reverse</span><span class=p>(</span><span class=n>InstrsForInstructionWorklist</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=c1>// 删掉死代码。
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>ICWorklist</span><span class=p>.</span><span class=n>push</span><span class=p>(</span><span class=n>Inst</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>MadeIRChange</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>主要核心逻辑 (<a href=https://github.com/llvm/llvm-project/blob/a5cee3e386bde28ce21ff2ead3fc420f018604ca/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp#L3793>https://github.com/llvm/llvm-project/blob/a5cee3e386bde28ce21ff2ead3fc420f018604ca/llvm/lib/Transforms/InstCombine/InstructionCombining.cpp#L3793</a>)：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=kt>bool</span> <span class=n>InstCombinerImpl</span><span class=o>::</span><span class=n>run</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>while</span> <span class=p>(</span><span class=o>!</span><span class=n>Worklist</span><span class=p>.</span><span class=n>isEmpty</span><span class=p>())</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>Instruction</span> <span class=o>*</span><span class=n>Result</span> <span class=o>=</span> <span class=n>visit</span><span class=p>(</span><span class=o>*</span><span class=n>I</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=o>++</span><span class=n>NumCombined</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>      <span class=c1>// Should we replace the old instruction with a new one?
+</span></span></span><span class=line><span class=cl><span class=c1></span>      <span class=k>if</span> <span class=p>(</span><span class=n>Result</span> <span class=o>!=</span> <span class=n>I</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// Everything uses the new instruction now.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>I</span><span class=o>-&gt;</span><span class=n>replaceAllUsesWith</span><span class=p>(</span><span class=n>Result</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// Move the name to the new instruction first.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>Result</span><span class=o>-&gt;</span><span class=n>takeName</span><span class=p>(</span><span class=n>I</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// Insert the new instruction into the basic block...
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>BasicBlock</span> <span class=o>*</span><span class=n>InstParent</span> <span class=o>=</span> <span class=n>I</span><span class=o>-&gt;</span><span class=n>getParent</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=n>BasicBlock</span><span class=o>::</span><span class=n>iterator</span> <span class=n>InsertPos</span> <span class=o>=</span> <span class=n>I</span><span class=o>-&gt;</span><span class=n>getIterator</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>        <span class=n>Result</span><span class=o>-&gt;</span><span class=n>insertInto</span><span class=p>(</span><span class=n>InstParent</span><span class=p>,</span> <span class=n>InsertPos</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=c1>// Push the new instruction and any users onto the worklist.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=n>Worklist</span><span class=p>.</span><span class=n>pushUsersToWorkList</span><span class=p>(</span><span class=o>*</span><span class=n>Result</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=n>Worklist</span><span class=p>.</span><span class=n>push</span><span class=p>(</span><span class=n>Result</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>        <span class=n>eraseInstFromFunction</span><span class=p>(</span><span class=o>*</span><span class=n>I</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// If the instruction was modified, it&#39;s possible that it is now dead.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// if so, remove it.
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=k>if</span> <span class=p>(</span><span class=n>isInstructionTriviallyDead</span><span class=p>(</span><span class=n>I</span><span class=p>,</span> <span class=o>&amp;</span><span class=n>TLI</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>          <span class=n>eraseInstFromFunction</span><span class=p>(</span><span class=o>*</span><span class=n>I</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span> <span class=k>else</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>          <span class=n>Worklist</span><span class=p>.</span><span class=n>pushUsersToWorkList</span><span class=p>(</span><span class=o>*</span><span class=n>I</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>          <span class=n>Worklist</span><span class=p>.</span><span class=n>push</span><span class=p>(</span><span class=n>I</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=n>MadeIRChange</span> <span class=o>=</span> <span class=nb>true</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>MadeIRChange</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>而处理各类 Instruction 的代码被放在 <code>llvm/lib/Transforms/InstCombine</code> 里，有以下等文件：</p><ul><li>InstCombineAddSub.cpp 处理 <code>add</code>, <code>sub</code>, <code>fadd</code>, <code>fsub</code> 指令。</li><li>InstCombineAndOrXor.cpp 处理 <code>and</code>, <code>or</code>, <code>xor</code> 指令。</li><li>InstCombineAtomicRMW.cpp 处理 <code>atomicrmw</code> 指令。</li><li>InstCombineCalls.cpp 处理 <code>call</code> 指令。</li><li>InstCombineCasts.cpp 处理如 <code>zext</code>, <code>sext</code> 等类型转换指令。</li><li>InstCombineCompares.cpp 处理 <code>icmp</code> 和 <code>fcmp</code> 指令。</li><li>InstCombineLoadStoreAlloca.cpp 处理 <code>load</code>，<code>store</code>，<code>alloc</code> 指令。</li><li>InstCombineMulDivRem.cpp 处理 <code>mul</code>，<code>div</code>，<code>rem</code> 等指令及变种。</li><li>InstCombinePHI.cpp 处理 <code>phi</code> 节点。</li><li>InstCombineSelect.cpp 处理 <code>select</code> 指令。</li><li>InstCombineShifts.cpp 处理 <code>shl</code>, <code>lshr</code>, <code>ashr</code> 等移位指令。</li><li>InstCombineVectorOps.cpp 处理和向量操作有关的操作。</li></ul><h2 id=pattern-match>Pattern match</h2><p>InstCombine 是一个启发式的优化 Pass，其中定义了海量优化规则，当匹配到这些模式时，就可以对相应的代码进行简化（fold）。而这里的模式匹配使用到了 LLVM 中的另一基础设施 &ndash; PatternMatch。通过它我们可以使用 C++ 添加新的优化规则，并且非常容易理解和阅读。事实上，以上一系列实现文件包含的就是各类匹配规则。</p><p>举一个简单的例子(<a href=https://github.com/llvm/llvm-project/blob/e0ac46e69d7adbe327148550ffafe746cbc0ec78/llvm/lib/Transforms/InstCombine/InstCombineAddSub.cpp#L1412-L1414>https://github.com/llvm/llvm-project/blob/e0ac46e69d7adbe327148550ffafe746cbc0ec78/llvm/lib/Transforms/InstCombine/InstCombineAddSub.cpp#L1412-L1414</a>)：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl>  <span class=c1>// A + -B  --&gt;  A - B
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>match</span><span class=p>(</span><span class=n>RHS</span><span class=p>,</span> <span class=n>m_Neg</span><span class=p>(</span><span class=n>m_Value</span><span class=p>(</span><span class=n>B</span><span class=p>))))</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>BinaryOperator</span><span class=o>::</span><span class=n>CreateSub</span><span class=p>(</span><span class=n>LHS</span><span class=p>,</span> <span class=n>B</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><p><code>match</code> 函数接受一个自定义的 pattern，如果满足则返回真。而以 <code>m_</code> 开头的函数则是 LLVM 定义的一系列原语，对应着各种基本操作。这里的规则表示 LLVM 会将 <code>A + -B</code> fold 为 <code>A - B</code>。可以看到如果我们匹配上了这一条规则我们将创建一个新的 <code>sub</code> 指令并将其返回出去。结合上面 <code>InstCombine</code> 的主要逻辑可知这个就是 <code>visit</code> 返回的 <code>Instruction</code> 了，LLVM 会将新生成的指令继续放到 worklist 中迭代。</p><p>LLVM 定义的所有原语在这 (<a href=https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/PatternMatch.h>https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/IR/PatternMatch.h</a>) 大部分的原语都比较好理解，这里简单介绍下一些比较特殊的：</p><ul><li><code>m_Value</code> 这个原语非常重要并且被广泛使用，它会匹配一个 <code>llvm::Value</code> 并且捕获这个 <code>Value</code>。</li></ul><p>举个简单例子，我们想匹配一个 <code>add</code> 指令并 dump 两个操作数。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-llvm data-lang=llvm><span class=line><span class=cl><span class=nv>%add</span> <span class=p>=</span> <span class=k>add</span> <span class=k>nsw</span> <span class=k>i32</span> <span class=nv>%a</span><span class=p>,</span> <span class=nv>%b</span>
+</span></span></code></pre></td></tr></table></div></div><p>我们可以编写下面规则：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>Value</span> <span class=o>*</span><span class=n>X</span><span class=p>,</span> <span class=o>*</span><span class=n>Y</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=k>if</span> <span class=p>(</span><span class=n>match</span><span class=p>(</span><span class=n>m_Add</span><span class=p>(</span><span class=n>m_Value</span><span class=p>(</span><span class=n>X</span><span class=p>),</span> <span class=n>m_Value</span><span class=p>(</span><span class=n>Y</span><span class=p>))))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>X</span><span class=o>-&gt;</span><span class=n>dump</span><span class=p>();</span> <span class=c1>// %a
+</span></span></span><span class=line><span class=cl><span class=c1></span>    <span class=n>Y</span><span class=o>-&gt;</span><span class=n>dump</span><span class=p>();</span> <span class=c1>// %b
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>另外注意 <code>m_Value</code> 也有一个参数为空的重载，表示匹配任意一个 <code>llvm::Value</code> 但是不捕获。</p><ul><li><code>m_Specific</code> 此原语用来表示某一特定的值。</li><li><code>m_Deferred</code> 此原语也用来表示某一特定的值，但被用在同一 <code>match</code> 下。</li></ul><p>这个地方是一个很容易混淆的地方，我举个简单的例子：</p><p>如果你要匹配 <code>(A + B) * (A + B)</code>，应该这么写：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>Value</span> <span class=o>*</span><span class=n>A</span><span class=p>,</span> <span class=o>*</span><span class=n>B</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>match</span><span class=p>(</span><span class=n>m_Mul</span><span class=p>(</span><span class=n>m_Add</span><span class=p>(</span><span class=n>m_Valule</span><span class=p>(</span><span class=n>A</span><span class=p>),</span> <span class=n>m_Value</span><span class=p>(</span><span class=n>B</span><span class=p>)),</span> <span class=n>m_Add</span><span class=p>(</span><span class=n>m_Specific</span><span class=p>(</span><span class=n>A</span><span class=p>),</span> <span class=n>m_Specific</span><span class=p>(</span><span class=n>B</span><span class=p>))))</span>
+</span></span></code></pre></td></tr></table></div></div><p>但是如果你要匹配 <code>A + A</code>，就必须使用 <code>m_Deferred</code>，因为它们在同一 <code>match</code> 下，即：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>Value* A;
+</span></span><span class=line><span class=cl>match(m_Add(m_Value(A), m_Deferred(A)));
+</span></span></code></pre></td></tr></table></div></div><ul><li><code>m_OneUse</code> 此原语表示这条指令只在当前被使用了，这很重要因为其它地方也可能用到这个表达式的结果，这样删掉它就是不安全的操作了。比如<a href=https://github.com/llvm/llvm-project/blob/9c2f792dceb626f57c577b02468562e1e84822f1/llvm/lib/Transforms/InstCombine/InstCombineAddSub.cpp#L1431-L1433>这里</a>。</li></ul><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl>  <span class=c1>// LHS + (A + LHS) --&gt; A + (LHS &lt;&lt; 1)
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=k>if</span> <span class=p>(</span><span class=n>match</span><span class=p>(</span><span class=n>RHS</span><span class=p>,</span> <span class=n>m_OneUse</span><span class=p>(</span><span class=n>m_c_Add</span><span class=p>(</span><span class=n>m_Value</span><span class=p>(</span><span class=n>A</span><span class=p>),</span> <span class=n>m_Specific</span><span class=p>(</span><span class=n>LHS</span><span class=p>)))))</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>BinaryOperator</span><span class=o>::</span><span class=n>CreateAdd</span><span class=p>(</span><span class=n>A</span><span class=p>,</span> <span class=n>Builder</span><span class=p>.</span><span class=n>CreateShl</span><span class=p>(</span><span class=n>LHS</span><span class=p>,</span> <span class=mi>1</span><span class=p>,</span> <span class=s>&#34;reass.add&#34;</span><span class=p>));</span>
+</span></span></code></pre></td></tr></table></div></div><ul><li><code>m_Intrinsic</code> 除了算术基本操作， LLVM 中也提供了匹配 intrinsic 的原语，比如 <code>m_Intrinsic&lt;Intrinsic::ctlz>()</code> 可以匹配 <code>llvm.ctlz</code> 这个 intrinsic 函数调用。另外对于一些非常常用的 intrinsic，LLVM 也提供了一些 helper 原语，比如 <code>m_SMax</code> 和 <code>m_SMin</code>，分别匹配 <code>llvm.smax</code> 和 <code>llvm.smin</code>。</li><li><code>m_c_*</code> 一般的匹配原语是有序的，即 <code>A + -B</code> 和 <code>-B + A</code> 是不同的。如果你的规则符合交换律，请使用前缀为 <code>m_c_*</code> 的原语。</li></ul><h2 id=instruction-simplify>Instruction Simplify</h2><p>InstCombine 在 LLVM 中端优化中是一个有意思的 Pass，基本上只要是没办法在其它特定 Pass 做的事情都可以往这里塞。它规则的编写一般都比较简单，难的是你的规则放在<strong>哪里</strong>。虽然严格意义上都塞在每个对应的 <code>visit</code> 方法里就行，但为了可维护性一般不会这么做。各种详细规则都会以 pattern 归类，并放在特定的 helper 函数中。比如 <a href=https://github.com/llvm/llvm-project/blob/9c2f792dceb626f57c577b02468562e1e84822f1/llvm/lib/Transforms/InstCombine/InstCombineAddSub.cpp#L1380-L1381>foldAddWithConstant</a> 里就专门放形式为 <code>add X, 常量</code> 的 pattern。</p><p>另外值得注意的是，每个 <code>visit</code> 方法在最开始一般都会调用 <code>simplify*Inst</code> 函数。它被定义在 <a href=https://github.com/llvm/llvm-project/blob/main/llvm/lib/Analysis/InstructionSimplify.cpp>InstructionSimplify.cpp</a> 中。<code>InstructionSimplify</code> 并不是一个独立的 Pass，而是被其它 Pass 使用，比如这里的 <code>InstCombine</code>。<strong>它的作用同样也是合并简化指令，但是它的不同之处在于它不会增加新的指令。</strong></p><p>举个例子，以下模式应该被放在 <code>InstructionSimplify</code> 中而不是 <code>InstCombine</code>：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c++ data-lang=c++><span class=line><span class=cl><span class=n>x</span> <span class=o>=</span> <span class=n>a</span> <span class=o>+</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>y</span> <span class=o>=</span> <span class=n>x</span> <span class=o>+</span> <span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=o>==&gt;</span>
+</span></span><span class=line><span class=cl><span class=n>y</span> <span class=o>=</span> <span class=n>a</span> <span class=o>+</span> <span class=mi>2</span><span class=p>;</span> <span class=c1>// 没有新增指令。
+</span></span></span></code></pre></td></tr></table></div></div><p>除了这一区别，<code>InstructionSimplify</code> 和 <code>InstCombine</code> 的实现几乎没有任何不同，这里不赘述。</p><blockquote><p>所以特别注意，如果你想新加一个优化规则，先确定它会不会新增加指令，如果不会的话请把规则放在 InstructionSimplify.cpp 中，否则放在对应的 InstCombine*.cpp 中。</p></blockquote><h2 id=贡献指南>贡献指南</h2><p>向 <code>InstCombine</code> 中贡献代码可参照以下步骤：</p><ol><li><p>寻找可能的新规则。可以多翻翻 Github issues，它有对应的 <a href="https://github.com/llvm/llvm-project/issues?q=is%3Aopen+is%3Aissue+label%3Allvm%3Ainstcombine">label</a>。但是这个 label 仅供参考，因为很多人乱加，一些标着特定 target 的 missed optimization 其实也属于中端优化的问题。你可以在 godbolt 上多开几个 target 看看它们是不是都有这个问题，如果是一般说明在中端就没有优化完全。</p></li><li><p>接着要确定优化的规则。godbolt 里可以直接查看 LLVM IR，你可以观察它是否存在可能的简化模式，并使用 <a href=https://alive2.llvm.org/ce/>alive2</a> 进行验证。Alive2 是一个用于检测 IR transformation 是否正确的工具，用法一般来说很简单，编写两个函数：<code>src</code> 为优化前的代码，<code>tgt</code> 为优化后的代码，如果优化正确 alive2 就会提示 <code>Transformation seems to be correct!</code>。这个 alive2 的链接一般要在 code review 时加上，这样你的 reviewer 可以很容易地看到你的 <code>fold</code> 是什么，以及是否正确。</p></li><li><p>编写测试。除了编写规则的代码，我们也需要在 <code>llvm/test/Transforms/InstCombine</code> 中编写测试 IR。据我的经验 LLVM 的 reviewer 一般喜欢先 <code>precommit</code> 测试，然后再编写新的 pattern，这样可以很清楚地在 diff 中看到 IR 的改变。由于 LLVM 用于 review 的 <code>arcanist</code> 工具非常坑，每次只能上传最近的一个 <code>commit</code>，所以这里简要说下我个人喜欢的 <code>workflow</code>：</p></li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>$ <span class=c1># 在 llvm/test/Transforms/InstCombine 中新增测试。</span>
+</span></span><span class=line><span class=cl>$ <span class=c1># 更新 check line。</span>
+</span></span><span class=line><span class=cl>$ python3 llvm/utils/update_test_checks.py --tool-binary<span class=o>=</span>/path-to-your-build-dir/bin/opt 修改的测试文件
+</span></span><span class=line><span class=cl>$ git commit <span class=c1># 这个就是 precommit test。</span>
+</span></span><span class=line><span class=cl>$ arc diff <span class=c1># 提交到 Phabricator</span>
+</span></span><span class=line><span class=cl>$ <span class=c1># 编写新规则</span>
+</span></span><span class=line><span class=cl>$ ninja <span class=c1># 重新编译</span>
+</span></span><span class=line><span class=cl>$ <span class=c1># 重新生成 check line，可以在 diff 中清楚看到我们的规则给 IR 带来的改变。</span>
+</span></span><span class=line><span class=cl>$ python3 llvm/utils/update_test_checks.py --tool-binary<span class=o>=</span>/path-to-your-build-dir/bin/opt 修改的测试文件
+</span></span><span class=line><span class=cl>$ git commit <span class=c1># 我们的主 patch。</span>
+</span></span></code></pre></td></tr></table></div></div><p>举一个我之前写的一个优化为例：</p><ol><li><a href=https://github.com/llvm/llvm-project/commit/2b9330e41f5405328e28d4b34bb69461fbe227b5>precommit test</a></li><li><a href=https://github.com/llvm/llvm-project/commit/e3175f7f1b55a38e9ab845ca26f0c4343ee2f7ff>main patch</a></li></ol><p>最后，happy hacking :^)</p></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/build_graalvm/><span class=mr-1.5>←</span><span>如何编译 GraalVM</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/cpp_inline/><span>C++ 中 inline 关键字的语义</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

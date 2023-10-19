@@ -1,0 +1,105 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Linux服务浅谈 - Jun's Blog</title><meta name=theme-color><meta name=description content="systemctl相关命令 1 2 3 4 5 systemctl start daemon //启动一个服务 systemctl stop daemon //停止一个服务 systemctl enable daemon //开机自启动 systemctl disable daemon //取消开机自启动 systemctl restart daemon //重新启"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="Linux服务浅谈"><meta itemprop=description content="systemctl相关命令 1 2 3 4 5 systemctl start daemon //启动一个服务 systemctl stop daemon //停止一个服务 systemctl enable daemon //开机自启动 systemctl disable daemon //取消开机自启动 systemctl restart daemon //重新启"><meta itemprop=datePublished content="2021-02-28T15:35:10+08:00"><meta itemprop=dateModified content="2021-02-28T15:35:10+08:00"><meta itemprop=wordCount content="935"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="Linux服务浅谈"><meta name=twitter:description content="systemctl相关命令 1 2 3 4 5 systemctl start daemon //启动一个服务 systemctl stop daemon //停止一个服务 systemctl enable daemon //开机自启动 systemctl disable daemon //取消开机自启动 systemctl restart daemon //重新启"><link rel=canonical href=https://www.junz.org/post/daemons/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">Linux服务浅谈</h1><div class="text-sm antialiased opacity-60"><time>Feb 28, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><h2 id=systemctl相关命令><code>systemctl</code>相关命令</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>systemctl start daemon //启动一个服务
+</span></span><span class=line><span class=cl>systemctl stop daemon //停止一个服务
+</span></span><span class=line><span class=cl>systemctl enable daemon //开机自启动
+</span></span><span class=line><span class=cl>systemctl disable daemon //取消开机自启动
+</span></span><span class=line><span class=cl>systemctl restart daemon //重新启动服务
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>systemctl mask daemon //将整个服务链接到/dev/null上，使得不用管其他依赖服务便可关闭此服务
+</span></span><span class=line><span class=cl>systemctl umask daemon
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>systemctl list-dependencies name.service //列出各个服务的依赖关系
+</span></span></code></pre></td></tr></table></div></div><h2 id=配置文件>配置文件</h2><ul><li>每个服务最主要的启动设置　<code>/usr/lib/systemd/system</code></li><li>系统执行中所产生的服务脚本　<code>/run/systemd/system</code></li><li>管理员所创建的服务脚本 <code>/etc/systemd/system</code></li></ul><p>上述配置文件的优先级依次升高
+Linux 会依次读取下列目录中的配置文件
+<code>/etc/systemd/system</code>　
+->
+<code>/run/systemd/system</code>
+->
+<code>/usr/lib/systemd/system</code></p><p>一般来说，<code>/etc/systemd/system</code>中主要都是软链接，真正配置文件位于<code>/lib/systemd/system</code></p><p>不建议直接修改<code>usr/lib/systemd/sytem</code>中的配置文件</p><h2 id=systemd的unit-类型><code>systemd</code>的unit 类型</h2><table><thead><tr><th style=text-align:center>拓展名</th><th style=text-align:center>功能</th></tr></thead><tbody><tr><td style=text-align:center>.service</td><td style=text-align:center>指一般的服务类型</td></tr><tr><td style=text-align:center>.target</td><td style=text-align:center>service的集合</td></tr></tbody></table><h2 id=编写自己的service文件>编写自己的service文件</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>[Unit]
+</span></span><span class=line><span class=cl>Description=&#34;此服务的描述&#34;
+</span></span><span class=line><span class=cl>Documentation=&#34;此服务的文档，可以是网页链接或者man page&#34;
+</span></span><span class=line><span class=cl>After=&#34;说明该unit在哪个daemon启动后再启动&#34;
+</span></span><span class=line><span class=cl>Before=&#34;说明该unit在哪个daemon启动前启动&#34;
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>[Service]
+</span></span><span class=line><span class=cl>User=nobody
+</span></span><span class=line><span class=cl>NoNewPrivileges=true
+</span></span><span class=line><span class=cl>ExecStart=&#34;实际执行此服务的脚本！注意尽量不要使用一些特殊字符！&#34;
+</span></span><span class=line><span class=cl>ExecStop=&#34;实际停止此服务的脚本&#34;
+</span></span><span class=line><span class=cl>Restart=on-failure
+</span></span><span class=line><span class=cl>RestartPreventExitStatus=23
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>[Install]
+</span></span><span class=line><span class=cl>WantedBy=multi-user.target　#表明此服务所在的target unit
+</span></span></code></pre></td></tr></table></div></div><h2 id=定时任务>定时任务</h2><h4 id=编辑定时任务>编辑定时任务</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>crontab -e
+</span></span></code></pre></td></tr></table></div></div><h4 id=查看当前定时任务>查看当前定时任务</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>crontab -l
+</span></span></code></pre></td></tr></table></div></div><h4 id=删除定时任务>删除定时任务</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>crontab -r
+</span></span></code></pre></td></tr></table></div></div><h4 id=时间基本语法>时间基本语法</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>*    *    *    *    *
+</span></span><span class=line><span class=cl>-    -    -    -    -
+</span></span><span class=line><span class=cl>|    |    |    |    |
+</span></span><span class=line><span class=cl>|    |    |    |    +----- 星期中星期几 (0 - 7) (星期天 为0)
+</span></span><span class=line><span class=cl>|    |    |    +---------- 月份 (1 - 12) 
+</span></span><span class=line><span class=cl>|    |    +--------------- 一个月中的第几天 (1 - 31)
+</span></span><span class=line><span class=cl>|    +-------------------- 小时 (0 - 23)
+</span></span><span class=line><span class=cl>+------------------------- 分钟 (0 - 59)
+</span></span></code></pre></td></tr></table></div></div><h4 id=示例>示例</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>* * * * * myCommand  //每1分钟执行一次myCommand
+</span></span><span class=line><span class=cl>3,15 * * * * myCommand  //每小时的第3和第15分钟执行
+</span></span><span class=line><span class=cl>3,15 8-11 * * * myCommand   //在上午8点到11点的第3和第15分钟执行
+</span></span><span class=line><span class=cl>* */1 * * * /etc/init.d/smb restart  //每一小时重启smb
+</span></span></code></pre></td></tr></table></div></div><h4 id=heading></h4><h4 id=crontab基本操作><code>crontab</code>基本操作</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>//cent os 7
+</span></span><span class=line><span class=cl>systemctl restart crond //重启
+</span></span><span class=line><span class=cl>systemctl start crond  //启动
+</span></span><span class=line><span class=cl>systemctl stop crond  //停止
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>tail -f /var/log/cron  //查看日志
+</span></span></code></pre></td></tr></table></div></div><h4 id=python实例>python实例</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>*/5 * * * * /usr/bin/python3 /root/example.py //注意文件首行要加上 #!/usr/bin/python3
+</span></span></code></pre></td></tr></table></div></div><h4 id=注意点>注意点</h4><ul><li>用绝对路径，路径写全</li><li>注意环境变量</li></ul></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/disk_management/><span class=mr-1.5>←</span><span>Linux硬盘管理</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

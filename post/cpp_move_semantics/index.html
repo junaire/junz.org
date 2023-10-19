@@ -1,0 +1,201 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>C++ 移动语义基础 - Jun's Blog</title><meta name=theme-color><meta name=description content="移动语义的作用 直接看一个例子： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 #include <iostream> struct S { S() { std::cout << &#34;S()\n&#34;; } S(const S&) { std::cout << &#34;S(const S&)\n&#34;; } ~S() { std::cout << &#34;~S()\n&#34;; } }; S foo() { return S(); } int main() { foo(); } 用以下"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="C++ 移动语义基础"><meta itemprop=description content="移动语义的作用 直接看一个例子： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 #include <iostream> struct S { S() { std::cout << &#34;S()\n&#34;; } S(const S&) { std::cout << &#34;S(const S&)\n&#34;; } ~S() { std::cout << &#34;~S()\n&#34;; } }; S foo() { return S(); } int main() { foo(); } 用以下"><meta itemprop=datePublished content="2023-02-21T16:19:35+08:00"><meta itemprop=dateModified content="2023-02-21T16:19:35+08:00"><meta itemprop=wordCount content="2712"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="C++ 移动语义基础"><meta name=twitter:description content="移动语义的作用 直接看一个例子： 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 #include <iostream> struct S { S() { std::cout << &#34;S()\n&#34;; } S(const S&) { std::cout << &#34;S(const S&)\n&#34;; } ~S() { std::cout << &#34;~S()\n&#34;; } }; S foo() { return S(); } int main() { foo(); } 用以下"><link rel=canonical href=https://www.junz.org/post/cpp_move_semantics/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">C++ 移动语义基础</h1><div class="text-sm antialiased opacity-60"><time>Feb 21, 2023</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><h2 id=移动语义的作用>移动语义的作用</h2><p>直接看一个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;iostream&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp></span>
+</span></span><span class=line><span class=cl><span class=k>struct</span> <span class=nc>S</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span><span class=p>()</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;S()</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span><span class=p>(</span><span class=k>const</span> <span class=n>S</span><span class=o>&amp;</span><span class=p>)</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;S(const S&amp;)</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=o>~</span><span class=n>S</span><span class=p>()</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;~S()</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>S</span> <span class=nf>foo</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>S</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>foo</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>用以下命令编译：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>clang++ demo.cc -std=c++03 -fno-elide-constructors
+</span></span></code></pre></td></tr></table></div></div><p>结果为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>S()
+</span></span><span class=line><span class=cl>S(const S&amp;)
+</span></span><span class=line><span class=cl>~S()
+</span></span><span class=line><span class=cl>~S()
+</span></span></code></pre></td></tr></table></div></div><p>注意到我们有一次构造函数的调用，一次拷贝构造函数的调用，两次析构函数的调用。这是因为我们以值的形式返回，首先会先构造出一个临时的 <code>S</code> 对象，然后将它复制给函数的返回值，最后这个临时对象与函数返回对象依次析构。可以想象到如果 <code>S</code> 是一个很大的对象时，这将是一个不小的开销。</p><p>我们修改代码为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span> <span class=n>s</span> <span class=o>=</span> <span class=n>foo</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>编译运行后的结果为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>S()
+</span></span><span class=line><span class=cl>S(const S&amp;)
+</span></span><span class=line><span class=cl>~S()
+</span></span><span class=line><span class=cl>S(const S&amp;)
+</span></span><span class=line><span class=cl>~S()
+</span></span><span class=line><span class=cl>~S()
+</span></span></code></pre></td></tr></table></div></div><p>可以看到我们又多了一次拷贝构造，也就是说我们把函数返回的值又拷贝给了 <code>main</code> 中的 <code>s</code>。这显然是很荒唐的，这么一段代码中竟然存在两次非必要拷贝。难道我们就不能直接把 <code>return S()</code> 中构造的对象直接初始化给 <code>main</code> 中的 <code>s</code>？</p><p>在 C++11 引入移动语义后，我们可以给 <code>S</code> 增加一个移动构造函数：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span><span class=p>(</span><span class=n>S</span><span class=o>&amp;&amp;</span><span class=p>)</span> <span class=p>{</span> <span class=n>std</span><span class=o>::</span><span class=n>cout</span> <span class=o>&lt;&lt;</span> <span class=s>&#34;S(S&amp;&amp;)</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>;</span> <span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>用以下命令编译：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>clang++ demo.cc -std=c++11 -fno-elide-constructors
+</span></span></code></pre></td></tr></table></div></div><p>结果为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>S()
+</span></span><span class=line><span class=cl>S(S&amp;&amp;)
+</span></span><span class=line><span class=cl>~S()
+</span></span><span class=line><span class=cl>S(S&amp;&amp;)
+</span></span><span class=line><span class=cl>~S()
+</span></span><span class=line><span class=cl>~S()
+</span></span></code></pre></td></tr></table></div></div><p>可以看到之前所有的拷贝构造函数都被现在的移动构造函数所取代了。如果我们自定义我们的移动构造函数，让它直接使用原来对象的所有资源，同时将原来对象持有的资源置为空，那就相当于“偷走了”原来对象的资源，使得原本昂贵的复制操作变成了廉价的移动操作。</p><p>例如类 <code>S</code> 持有一个指针，指向一块堆内存：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>S</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>const</span> <span class=kt>char</span><span class=o>*</span> <span class=n>data</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>len</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>对于它的移动构造函数，我们可以有如下实现：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span><span class=o>::</span><span class=n>S</span><span class=p>(</span><span class=n>S</span><span class=o>&amp;&amp;</span> <span class=n>other</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>data</span> <span class=o>=</span> <span class=n>std</span><span class=o>::</span><span class=n>exchange</span><span class=p>(</span><span class=n>other</span><span class=p>.</span><span class=n>data</span><span class=p>,</span> <span class=k>nullptr</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>len</span> <span class=o>=</span> <span class=n>std</span><span class=o>::</span><span class=n>exchange</span><span class=p>(</span><span class=n>other</span><span class=p>.</span><span class=n>len</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>这相当于将之前的资源拱手让人，原来的对象进入了一个默认的可析构状态。</p><p>但是值得注意的是，我们并没有说将 <code>return S()</code> 中构造的对象直接初始化给 <code>main</code> 中的 <code>s</code>，只是原来的拷贝构造函数变成了移动构造函数。而下面会提到的 <code>copy elision</code> 会有进一步优化。</p><h2 id=移动构造被调用的时机>移动构造被调用的时机</h2><p>简单来讲，对于“临时量”，需要被拷贝时，就会调用移动构造函数。例如：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span> <span class=n>s</span> <span class=o>=</span> <span class=n>S</span><span class=p>();</span>
+</span></span></code></pre></td></tr></table></div></div><p>用以下命令编译：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>clang++ demo.cc -std=c++11 -fno-elide-constructors
+</span></span></code></pre></td></tr></table></div></div><p>结果为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>S()
+</span></span><span class=line><span class=cl>S(S&amp;&amp;)
+</span></span><span class=line><span class=cl>~S()
+</span></span><span class=line><span class=cl>~S()
+</span></span></code></pre></td></tr></table></div></div><p>因为等号右边的 <code>S()</code> 是临时创建出来的，运行到下一行就被销毁了。所以我们拷贝它的时候可以移动它，直接取它的所有资源为己用，反正它后面也没用了，对吗？:)</p><h2 id=右值与-stdmove>右值与 std::move</h2><p>而这种“临时量”，被称为右值（<code>rvalue</code>）。右值是值类别（value categories）的一种，而值类别又是表达式（expression）的属性之一。认识到值类别是 expression 的属性这一点非常重要，比如：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>int</span> <span class=n>x</span> <span class=o>=</span> <span class=mi>42</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>这里如果我们要讨论上面代码的值类别就是不成立的，因为这是一个 <code>declaration</code>。C++ 标准中对于表达式的定义是：</p><blockquote><p>An expression is a sequence of operators and operands that specifies a computation. An expression can result in a value and can cause side effects.</p></blockquote><p>下面举几个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=mi>42</span> <span class=c1>// integer literal
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=s>&#34;Hello, world!&#34;</span> <span class=c1>// string literal
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>nullptr</span> <span class=c1>// nullptr literal
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>x</span> <span class=o>=</span> <span class=mi>42</span> <span class=c1>// binary expression
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>x</span> <span class=c1>// declaration reference expression
+</span></span></span></code></pre></td></tr></table></div></div><p>这些都属于 <code>expression</code>，注意结尾没有 <code>;</code>，否则便成为了 <code>statement</code>。</p><p><code>expression</code> 要么会返回一个值 <code>value</code>，要么会有副作用。比如上面的 <code>42</code>，<code>"hello, world!"</code> 和 <code>x</code> 都返回了一个值，而 <code>x = 42</code> 则产生了副作用。而值类别便描述了值（<code>value</code>）的某种属性。</p><p>要给出一个清楚易懂的关于右值的定义很难，但是我们暂时可以将其理解是“临时的”的值。拷贝这样的右值就会调用移动构造函数，为我们减少不必要的拷贝<strong>创造了空间。</strong></p><p>那能不能移动一个非右值呢？</p><p>假设我们有如下代码：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span> <span class=n>s1</span><span class=p>{};</span>
+</span></span><span class=line><span class=cl><span class=n>s1</span><span class=p>.</span><span class=n>do_something</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>S</span> <span class=n>s2</span> <span class=o>=</span> <span class=n>s1</span><span class=p>;</span> <span class=c1>// 不需要 s1 了，能否将它的资源都转手给 s2？
+</span></span></span></code></pre></td></tr></table></div></div><p>答案是可以的，我们可以将其转为一个右值引用：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span> <span class=n>s2</span> <span class=o>=</span> <span class=k>static_cast</span><span class=o>&lt;</span><span class=n>S</span><span class=o>&amp;&amp;&gt;</span><span class=p>(</span><span class=n>s1</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><p>标准库为此专门提供了一个库函数 <code>std::move()</code> 将这一类型转换封装起来，于是我们可以写：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span> <span class=n>s2</span> <span class=o>=</span> <span class=n>std</span><span class=o>::</span><span class=n>move</span><span class=p>(</span><span class=n>s1</span><span class=p>);</span>
+</span></span></code></pre></td></tr></table></div></div><p>由此我们可以发现 <code>std::move()</code> 并没有做任何“移动”，它只是一个类型转换，使得移动构造函数有机会调用。如果说我们将移动构造函数也实现为拷贝，那么即使“移动”也将不会有任何性能提升！</p><p>另外注意 <code>s1</code> 被移动后的声明周期并没有结束，而是进入了称为 <code>valid but not specified</code> 的状态。它不能再被使用，除非被赋了新的值，使用一个已经移动过的值，是 C++ 编程中一种常见错误，称为 use after move。</p><h2 id=值类别>值类别</h2><p>上面我们非常简单地介绍了值类别的一种 &ndash; 右值（<code>rvalue</code>），下面我们详细讨论下 C++ 中所有的值类别。
+<img src=/images/cpp_value_categories.jpg alt=cpp_value_categories></p><p>可以看到 C++ 的值类别其实非常混乱，<code>glvalue</code> 实际上与 <code>rvalue</code> 有一部分重合了。细分下来有三种值类别：</p><ul><li><code>lvalue</code> locator value</li><li><code>prvalue</code> pure readable value</li><li><code>xvalue</code> expiring value</li></ul><p>具体的分类标准十分复杂，可见 <a href=https://en.cppreference.com/w/cpp/language/value_category>Value categories</a>。但简单来说：</p><ul><li>所有有名字的表达式为 <code>lvalue</code></li><li>所有字符串字面量，如 <code>"Hello, world"</code>，为 <code>lvalue</code></li><li>所有非字符串字面量，如 <code>0</code>，<code>true</code> 或 <code>nullptr</code>，为 <code>prvalue</code></li><li>所有没有名字的临时值，尤其是以值返回的对象，为 <code>prvalue</code></li><li>所有 <code>std::move()</code> 的对象，为 <code>xvalue</code></li></ul><p>而 C++17 之后，完整类型的 <code>prvalue</code> 都可以被自动转换为相同类型的 <code>xvalue</code>。这意味着我们可以将 <code>prvalue</code> 以 <code>xvalue</code> 的形式传递，即使他没有拷贝构造函数或移动构造函数。例如：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=k>struct</span> <span class=nc>S</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span><span class=p>()</span> <span class=o>=</span> <span class=k>default</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span><span class=p>(</span><span class=k>const</span> <span class=n>S</span><span class=o>&amp;</span><span class=p>)</span> <span class=o>=</span> <span class=k>delete</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span><span class=p>(</span><span class=n>S</span><span class=o>&amp;&amp;</span><span class=p>)</span> <span class=o>=</span> <span class=k>delete</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>};</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>S</span> <span class=nf>foo</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>S</span><span class=p>();</span> <span class=c1>// C++17 后合法。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>void</span> <span class=nf>bar</span><span class=p>(</span><span class=n>S</span> <span class=n>s</span><span class=p>)</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>bar</span><span class=p>(</span><span class=n>foo</span><span class=p>());</span> <span class=c1>// C++17 后合法。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h2 id=右值引用与重载决议>右值引用与重载决议</h2><p>为了配合右值（<code>rvalue</code>）的概念，C++ 标准又引入了右值引用这一概念：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=kt>int</span><span class=o>&amp;&amp;</span> <span class=n>rvalue_ref</span> <span class=o>=</span> <span class=mi>42</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>右值引用一般情况下并不会单独使用，可以理解为是右值的附属概念。其中需要注意的一点就是右值引用只能绑定到右值上。下面是它对重载决议的影响（数字代表被调用的顺序）：</p><table><thead><tr><th style=text-align:center>Call</th><th style=text-align:center><code>f(X&)</code></th><th style=text-align:center><code>f(const X&)</code></th><th style=text-align:center><code>f(X&&)</code></th><th style=text-align:center><code>f(const X&&)</code></th></tr></thead><tbody><tr><td style=text-align:center><code>f(value)</code></td><td style=text-align:center>1</td><td style=text-align:center>2</td><td style=text-align:center>no</td><td style=text-align:center>no</td></tr><tr><td style=text-align:center><code>f(const_val)</code></td><td style=text-align:center>no</td><td style=text-align:center>1</td><td style=text-align:center>no</td><td style=text-align:center>no</td></tr><tr><td style=text-align:center><code>f(X{})</code></td><td style=text-align:center>no</td><td style=text-align:center>3</td><td style=text-align:center>1</td><td style=text-align:center>2</td></tr><tr><td style=text-align:center><code>f(std::move(value))</code></td><td style=text-align:center>no</td><td style=text-align:center>3</td><td style=text-align:center>1</td><td style=text-align:center>2</td></tr><tr><td style=text-align:center><code>f(std::move(const_val))</code></td><td style=text-align:center>no</td><td style=text-align:center>2</td><td style=text-align:center>no</td><td style=text-align:center>1</td></tr></tbody></table><p>总结一下就是以右值引用为函数参数的函数只能接受非 const 的右值引用，而常量左值引用可以接受任何值，不过接收右值的优先级最低，可以看作是一种 fallback。上表还包含了常量右值引用，但是实际上它在语法上没有任何意义，我们可以忽略它，任何时候我们都不应该创建一个常量右值引用。因为右值引用生来是为了“移动”，为了转移资源而服务的，又加了“常量”，即不可变，便没有意义了。</p><h2 id=copy-elision>Copy elision</h2><p><code>copy elision</code> 是编译器的一种优化，用于消除不必要的拷贝或者移动操作。它的两种情况更常见的名字是 <code>NRVO (Named Return Value Optimization)</code> 或者 <code>RVO (Return Value Optimization)</code>。在 C++17 后，这种优化是义务的，或者说是标准保证一定会发生的。</p><p>在一个返回语句中，当操作数是一个与函数返回类型相同的类型（忽略 CV qualification）的 <code>prvalue</code>，<code>copy elision</code> 一定会发生，这里一般被称为 <code>RVO</code>。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span> <span class=nf>foo</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>S</span><span class=p>();</span> <span class=c1>// RVO C++17 后一定会在这里发生。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span> <span class=n>s</span> <span class=o>=</span> <span class=n>foo</span><span class=p>();</span> <span class=c1>// copy elision C++17 后一定会在这里发生。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>用以下命令编译：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>clang++ demo.cc -std=c++17
+</span></span></code></pre></td></tr></table></div></div><p>输出：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>S()
+</span></span><span class=line><span class=cl>~S()
+</span></span></code></pre></td></tr></table></div></div><p>可以看到我们实现了把 <code>return S()</code> 中构造的对象直接初始化给 <code>main</code> 中的 <code>s</code>，再也没有任何临时量的产生了！这也是为什么前文要用 <code>-fno-elide-constructors</code> 编译，因为现在的编译器都有这个优化，我们只有关掉它才能看到移动语义的效果。</p><p>下面的情况下不保证会发生，但一般编译器都实现了：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-cpp data-lang=cpp><span class=line><span class=cl><span class=n>S</span> <span class=nf>foo</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span> <span class=n>s</span><span class=p>{};</span>
+</span></span><span class=line><span class=cl>  <span class=k>return</span> <span class=n>s</span><span class=p>;</span> <span class=c1>// NRVO 不保证但一般会发生在这里。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>S</span> <span class=n>s</span> <span class=o>=</span> <span class=n>foo</span><span class=p>();</span> <span class=c1>// copy elision C++17 后一定会在这里发生。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>输出：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>S()
+</span></span><span class=line><span class=cl>~S()
+</span></span></code></pre></td></tr></table></div></div></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/linker_and_library/><span class=mr-1.5>←</span><span>链接与库</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/how_to_optimize_gemm/><span>如何优化矩阵相乘</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

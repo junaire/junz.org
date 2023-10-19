@@ -1,0 +1,492 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>如何优化矩阵相乘 - Jun's Blog</title><meta name=theme-color><meta name=description content="本文中所有的优化策略源自 How To Optimize Gemm，感谢 Prof. Robert van de Geijn 教授及其团队的付出！❤ 我对原有的代码进行了一些改动，并放在了 junaire/HowToOptimizeGEMM 中。 矩阵相乘的定义 假设给"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="如何优化矩阵相乘"><meta itemprop=description content="本文中所有的优化策略源自 How To Optimize Gemm，感谢 Prof. Robert van de Geijn 教授及其团队的付出！❤ 我对原有的代码进行了一些改动，并放在了 junaire/HowToOptimizeGEMM 中。 矩阵相乘的定义 假设给"><meta itemprop=datePublished content="2023-02-16T23:50:26+08:00"><meta itemprop=dateModified content="2023-02-16T23:50:26+08:00"><meta itemprop=wordCount content="3347"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="如何优化矩阵相乘"><meta name=twitter:description content="本文中所有的优化策略源自 How To Optimize Gemm，感谢 Prof. Robert van de Geijn 教授及其团队的付出！❤ 我对原有的代码进行了一些改动，并放在了 junaire/HowToOptimizeGEMM 中。 矩阵相乘的定义 假设给"><link rel=canonical href=https://www.junz.org/post/how_to_optimize_gemm/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">如何优化矩阵相乘</h1><div class="text-sm antialiased opacity-60"><time>Feb 16, 2023</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><blockquote><p>本文中所有的优化策略源自 <a href=https://github.com/flame/how-to-optimize-gemm>How To Optimize Gemm</a>，感谢 <a href=mailto:rvdg@cs.utexas.edu>Prof. Robert van de Geijn</a> 教授及其团队的付出！❤</p><p>我对原有的代码进行了一些改动，并放在了 <a href=https://github.com/junaire/HowToOptimizeGEMM>junaire/HowToOptimizeGEMM</a> 中。</p></blockquote><h2 id=矩阵相乘的定义>矩阵相乘的定义</h2><p>假设给定一个 m 行 p 列 的矩阵 A, 与一个 p 行 n 列的矩阵 B 相乘，结果可以得到一个 m 行 n 列的矩阵 C。C 中第 i 行，第 k 列的元素等于 A 中第 i 行的所有元素与 B 中第 k 列所有元素对应相乘的和。</p><p><img src=/images/matrix_multiplication_def.png alt=matrix_multiplication_def></p><h2 id=朴素代码实现>朴素代码实现</h2><p>根据定义我们可以得到一个最简单的 C 代码实现：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>double</span> <span class=n>A</span><span class=p>[</span><span class=n>m</span><span class=p>][</span><span class=n>k</span><span class=p>];</span> <span class=c1>// m 行 k 列矩阵
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>double</span> <span class=n>B</span><span class=p>[</span><span class=n>k</span><span class=p>][</span><span class=n>n</span><span class=p>];</span> <span class=c1>// k 行 n 列矩阵
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=kt>double</span> <span class=n>C</span><span class=p>[</span><span class=n>m</span><span class=p>][</span><span class=n>n</span><span class=p>];</span> <span class=c1>// m 行 n 列矩阵
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>m</span><span class=p>;</span> <span class=o>++</span><span class=n>i</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>j</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>j</span> <span class=o>&lt;</span> <span class=n>n</span><span class=p>;</span> <span class=o>++</span><span class=n>j</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=o>++</span><span class=n>p</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=n>C</span><span class=p>[</span><span class=n>i</span><span class=p>][</span><span class=n>j</span><span class=p>]</span> <span class=o>+=</span> <span class=n>A</span><span class=p>[</span><span class=n>i</span><span class=p>][</span><span class=n>p</span><span class=p>]</span> <span class=o>*</span> <span class=n>B</span><span class=p>[</span><span class=n>p</span><span class=p>][</span><span class=n>j</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><h2 id=性能衡量>性能衡量</h2><p>在矩阵相乘中，我们用 <code>FLOPS</code> 来衡量算法的性能。<code>FLOPS</code> 指每秒浮点运算次数。也就是总的浮点数运算次数除以所花费的时间。</p><p>在矩阵相乘中，为了计算 C 中的一个元素，需要将 A 中第 i 行的 k 个元素与 B 中第 p 列的 k 个元素分别对应相乘得到 k 个结果并相加在一起。所以总共需要 <code>2 * k</code> 次浮点运算。矩阵 C 中总共有 <code>m * n</code> 个元素，所以总的浮点数运算次数，即 <code>FLOPs</code> 为 <code>2 * m * n * k</code>。</p><p>故矩阵相乘的 <code>FLOPS</code> 为 <code>FLOPs / time_cost</code>。</p><h2 id=优化思路>优化思路</h2><p>矩阵相乘的优化主要是访存优化。观察上面的朴素实现我们可以发现，对于矩阵 A，我们总是在做步长为1的访存，而对于矩阵 B，我们的每次元素访问跨度都是 n，即矩阵的宽度。这显然对缓存是不友好的，我们需要尽可能的减小访存步长，从而提高高速缓存命中率。</p><h2 id=优化实现>优化实现</h2><h3 id=前置工作>前置工作</h3><p>首先我们要做的是将行主序储存的矩阵转换为列主序储存。（或者说矩阵的转置）</p><p>定义下列宏：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=cp>#define A(i, j) a[(j)*lda + (i)]
+</span></span></span><span class=line><span class=cl><span class=cp>#define B(i, j) b[(j)*ldb + (i)]
+</span></span></span><span class=line><span class=cl><span class=cp>#define C(i, j) c[(j)*ldc + (i)]
+</span></span></span></code></pre></td></tr></table></div></div><p>其中 <code>lda</code>，<code>ldb</code> 与 <code>ldc</code> 分别代表的是矩阵 A，B 和 C 的高度。</p><p>我们用一个一维向量来储存整个矩阵，举个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;stdio.h&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp>#include</span> <span class=cpf>&lt;stdlib.h&gt;</span><span class=cp>
+</span></span></span><span class=line><span class=cl><span class=cp></span>
+</span></span><span class=line><span class=cl><span class=cp>#define A(i, j) a[(j)*lda + (i)]
+</span></span></span><span class=line><span class=cl><span class=cp></span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=nf>main</span><span class=p>()</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>lda</span> <span class=o>=</span> <span class=mi>3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=kt>int</span> <span class=n>k</span> <span class=o>=</span> <span class=mi>3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// lda 行，k 列的矩阵。
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>double</span><span class=o>*</span> <span class=n>a</span> <span class=o>=</span> <span class=nf>malloc</span><span class=p>(</span><span class=k>sizeof</span><span class=p>(</span><span class=kt>double</span><span class=p>)</span> <span class=o>*</span> <span class=p>(</span><span class=n>lda</span> <span class=o>*</span> <span class=n>k</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>  <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span><span class=mi>0</span><span class=p>)</span> <span class=o>=</span> <span class=mf>1.00</span><span class=p>;</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span><span class=mi>1</span><span class=p>)</span> <span class=o>=</span> <span class=mf>2.00</span><span class=p>;</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span><span class=mi>2</span><span class=p>)</span> <span class=o>=</span> <span class=mf>3.00</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=nf>A</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span><span class=mi>0</span><span class=p>)</span> <span class=o>=</span> <span class=mf>4.00</span><span class=p>;</span> <span class=nf>A</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span><span class=mi>1</span><span class=p>)</span> <span class=o>=</span> <span class=mf>5.00</span><span class=p>;</span> <span class=nf>A</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span><span class=mi>2</span><span class=p>)</span> <span class=o>=</span> <span class=mf>6.00</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=nf>A</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span><span class=mi>0</span><span class=p>)</span> <span class=o>=</span> <span class=mf>7.00</span><span class=p>;</span> <span class=nf>A</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span><span class=mi>1</span><span class=p>)</span> <span class=o>=</span> <span class=mf>8.00</span><span class=p>;</span> <span class=nf>A</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span><span class=mi>2</span><span class=p>)</span> <span class=o>=</span> <span class=mf>9.00</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=k>for</span> <span class=p>(</span><span class=kt>double</span><span class=o>*</span> <span class=n>p</span> <span class=o>=</span> <span class=n>a</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>a</span> <span class=o>+</span> <span class=p>(</span><span class=n>lda</span> <span class=o>*</span> <span class=n>k</span><span class=p>);</span> <span class=o>++</span><span class=n>p</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=nf>printf</span><span class=p>(</span><span class=s>&#34;%.2lf &#34;</span><span class=p>,</span> <span class=o>*</span><span class=n>p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=nf>printf</span><span class=p>(</span><span class=s>&#34;</span><span class=se>\n</span><span class=s>&#34;</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>输出结果为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>1.00 4.00 7.00 2.00 5.00 8.00 3.00 6.00 9.00
+</span></span></code></pre></td></tr></table></div></div><p>可以清楚地看到，矩阵 A 是一列一列在内存中储存的，即相邻列之间是连续的，这与传统上储存二维矩阵的形式刚好相反。</p><h3 id=循环展开>循环展开</h3><p>我们用一个简单的例子来说明具体的优化策略：</p><p>首先我们定义三个 4x4 的矩阵 A，B 和 C。C = A x B。有下述代码实现：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=kt>int</span> <span class=n>m</span> <span class=o>=</span> <span class=mi>4</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>n</span> <span class=o>=</span> <span class=mi>4</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>k</span> <span class=o>=</span> <span class=mi>4</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=kt>int</span> <span class=n>lda</span><span class=p>,</span> <span class=n>ldb</span><span class=p>,</span> <span class=n>ldc</span> <span class=o>=</span> <span class=mi>4</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=c1>// 一次计算一行的4个元素。由于列和行长度都是4，所以计算4次。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>j</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>j</span> <span class=o>&lt;</span> <span class=n>n</span><span class=p>;</span> <span class=n>j</span> <span class=o>+=</span> <span class=mi>4</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>m</span><span class=p>;</span> <span class=o>++</span><span class=n>i</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// C(i, j) =&gt; 第 i 行，第 j 列元素。
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// A(i, 0) =&gt; 第 i 行，第 0 列元素。
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// B(0, j) =&gt; 第 0 行，第 j 列元素。
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=nf>AddDot1x4</span><span class=p>(</span><span class=n>k</span><span class=p>,</span> <span class=o>&amp;</span><span class=nf>A</span><span class=p>(</span><span class=n>i</span><span class=p>,</span> <span class=mi>0</span><span class=p>),</span> <span class=n>lda</span><span class=p>,</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>j</span><span class=p>),</span> <span class=o>&amp;</span><span class=nf>C</span><span class=p>(</span><span class=n>i</span><span class=p>,</span> <span class=n>j</span><span class=p>),</span> <span class=n>ldc</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>我们再以计算第0行4个元素，即第一次执行 <code>AddDot1x4</code> 为例，解释运算过程。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>c00 = (a00 * b00) + (a01 * b10) + (a02 * b20) + (a03 * b30)
+</span></span><span class=line><span class=cl>c01 = (a00 * b01) + (a01 * b11) + (a02 * b21) + (a03 * b31)
+</span></span><span class=line><span class=cl>c02 = (a00 * b02) + (a01 * b12) + (a02 * b22) + (a03 * b32)
+</span></span><span class=line><span class=cl>c03 = (a00 * b03) + (a01 * b13) + (a02 * b23) + (a03 * b33)
+</span></span></code></pre></td></tr></table></div></div><p>观察上述公式，我们可以发现每个元素的计算都分为4个部分，每个元素的第 i 个部分都访问了矩阵 A 中相同的元素，而一个元素4个部分对矩阵 B 的访问是内存连续的。所以我们可以改变循环方式，抛弃之前用一个循环计算 C 中一个元素的方法，即：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>2</span><span class=p>);</span> <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>3</span><span class=p>);</span> <span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>改成用一个大循环，每次计算这4个元素的一部分：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// cij  =             a0p   *   bp0
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>2</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>)</span> <span class=o>=</span> <span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>)</span> <span class=o>+</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>)</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>3</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>在第一种循环方式内，A 的每次访问都是跨步为 lda，而 B 则是连续的。所以，总的需要跨步为 lda 的访存次数是 <code>4 * k</code>。而第二种方法由于复用了 A，所以跨步为 lda 的访存次数为 <code>k</code>。</p><h3 id=减少访存次数>减少访存次数</h3><p>注意 <code>A(0,p)</code> 的含义实际为 <code>a[p * lda]</code>， 所以这实际上是一次很昂贵的访存操作。但是从上面的优化版循环我们可以看到，在一次循环里它是被共用的，而且是只读，所以我们可以一次循环只访存一次，将其存到一个局部变量中，指导编译器将其放入更高速的寄存器中。</p><p>再者就是对矩阵 C 的访问，由于我们相当于是在对其一个元素不断累加，所以我们根本不必每加一次就做一次访存，可以将临时结果暂存起来，循环退出后再做一次写入。</p><p>所以有：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>c_00</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_01</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_02</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_03</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span><span class=o>=</span><span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>){</span>
+</span></span><span class=line><span class=cl>  <span class=n>a_0p</span> <span class=o>=</span> <span class=nf>A</span><span class=p>(</span> <span class=mi>0</span><span class=p>,</span> <span class=n>p</span> <span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=n>c_00</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_01</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_02</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>2</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_03</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=nf>B</span><span class=p>(</span><span class=n>p</span><span class=p>,</span> <span class=mi>3</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_00</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_01</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_02</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_03</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>如此，我们便大大减少了不必要的昂贵访存操作，消除了一部分的访存延迟。</p><h3 id=减少索引开销>减少索引开销</h3><p>在上面的代码片段中我们可以看到，<code>B(p,0)</code> 的变化过程为：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>B(0,0) -&gt; B(1,0) -&gt; B(2,0) -&gt; B(3,0)
+</span></span></code></pre></td></tr></table></div></div><p>也就是下一个要访问的元素为同行下一列的元素。由于矩阵在内存中是列主序储存的，所以也就是在访问下一个元素，步长为1。同理对 <code>B(p,1)</code>，<code>B(p,2)</code>，<code>B(p,3)</code> 都是成立的。</p><p>于是我们可以创建4个指针，分别指向第0行4列的四个元素，循环一次便递增一次指针，实现访问下一个元素。如图所示：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>  bp0  bp1  bp2  bp3
+</span></span><span class=line><span class=cl>   |    |    |    |
+</span></span><span class=line><span class=cl>  \ /  \ /  \ /  \ /
+</span></span><span class=line><span class=cl>+----+----+----+----+
+</span></span><span class=line><span class=cl>|b00 |b01 |b02 |b03 |
+</span></span><span class=line><span class=cl>+----+----+----+----+
+</span></span><span class=line><span class=cl>|    |    |    |    |
+</span></span><span class=line><span class=cl>+----+----+----+----+
+</span></span><span class=line><span class=cl>|    |    |    |    |
+</span></span><span class=line><span class=cl>+----+----+----+----+
+</span></span><span class=line><span class=cl>|    |    |    |    |
+</span></span><span class=line><span class=cl>+----+----+----+----+
+</span></span></code></pre></td></tr></table></div></div><p>代码示例如下：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>bp0</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>bp1</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>bp2</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>bp3</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_00</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_01</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_02</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_03</span> <span class=o>=</span> <span class=mf>0.0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span><span class=o>=</span><span class=mi>0</span><span class=p>;</span> <span class=n>p</span><span class=o>&lt;</span><span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>){</span>
+</span></span><span class=line><span class=cl>  <span class=n>a_0p</span> <span class=o>=</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=n>c_00</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=o>*</span><span class=n>bp0</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_01</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=o>*</span><span class=n>bp1</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_02</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=o>*</span><span class=n>bp2</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_03</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=o>*</span><span class=n>bp3</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_00</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_01</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_02</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_03</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><h3 id=矩阵分块>矩阵分块</h3><p>我们一次计算4行4列共16个元素，即：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=c1>// 一次计算4行共16个元素。由于我们的矩阵比较小，
+</span></span></span><span class=line><span class=cl><span class=c1>// 列和行长度都是4，所以只计算1次。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>j</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>j</span> <span class=o>&lt;</span> <span class=n>n</span><span class=p>;</span> <span class=n>j</span> <span class=o>+=</span> <span class=mi>4</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=kt>int</span> <span class=n>i</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>i</span> <span class=o>&lt;</span> <span class=n>m</span><span class=p>;</span> <span class=n>i</span> <span class=o>+=</span> <span class=mi>4</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=c1>// C(i, j) =&gt; 第 i 行，第 j 列元素。
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// A(i, 0) =&gt; 第 i 行，第 0 列元素。
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=c1>// B(0, j) =&gt; 第 0 行，第 j 列元素。
+</span></span></span><span class=line><span class=cl><span class=c1></span>        <span class=nf>AddDot4x4</span><span class=p>(</span><span class=n>k</span><span class=p>,</span> <span class=o>&amp;</span><span class=nf>A</span><span class=p>(</span><span class=n>i</span><span class=p>,</span> <span class=mi>0</span><span class=p>),</span> <span class=n>lda</span><span class=p>,</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>j</span><span class=p>),</span> <span class=o>&amp;</span><span class=nf>C</span><span class=p>(</span><span class=n>i</span><span class=p>,</span> <span class=n>j</span><span class=p>),</span> <span class=n>ldc</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span></code></pre></td></tr></table></div></div><p>在使用之前所提到的技巧，可以得到：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>b_p0</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>b_p1</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>b_p2</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=n>b_p3</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>a_0p</span> <span class=o>=</span> <span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>a_1p</span> <span class=o>=</span> <span class=nf>A</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=n>p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>a_2p</span> <span class=o>=</span> <span class=nf>A</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=n>p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>a_3p</span> <span class=o>=</span> <span class=nf>A</span><span class=p>(</span><span class=mi>3</span><span class=p>,</span> <span class=n>p</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=n>b_p0</span> <span class=o>=</span> <span class=o>*</span><span class=n>b_p0</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>b_p1</span> <span class=o>=</span> <span class=o>*</span><span class=n>b_p1</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>b_p2</span> <span class=o>=</span> <span class=o>*</span><span class=n>b_p2</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>b_p3</span> <span class=o>=</span> <span class=o>*</span><span class=n>b_p3</span><span class=o>++</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=cm>/* First row */</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_00</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_01</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_02</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_03</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=cm>/* Second row */</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_10</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_11</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_12</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_13</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=cm>/* Third row */</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_20</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_21</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_22</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_23</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=cm>/* Four row */</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_30</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_31</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_32</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_33</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=c1>// 将 c_ij 赋值给 C(i, j)。
+</span></span></span></code></pre></td></tr></table></div></div><p>我们再计算下跨步为 lda 的访存次数。文章开头所提到的朴素实现中， A 的每次访问都是跨步为 lda，而 C 中一个元素需要访问 A 次数为 <code>k</code>，所以16个元素需要 <code>16 * k</code> 次访存跨步为 lda 的元素。而这里的优化版本一次循环需要访问 4 次，所以总的次数仅为 <code>4 * k</code>。</p><h3 id=向量化>向量化</h3><p>我们可以对上面的循环重新排列，指导编译器将序列化的循环转换为指令级的并行化计算。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=cm>/* First row and second rows */</span>
+</span></span><span class=line><span class=cl><span class=c1>// 可以看到 a_0p 与 a_1p 为同行相邻列的元素，内存中连续。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>c_00</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_10</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_01</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_11</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_02</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_12</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_03</span> <span class=o>+=</span> <span class=n>a_0p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_13</span> <span class=o>+=</span> <span class=n>a_1p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=cm>/* Third and fourth rows */</span>
+</span></span><span class=line><span class=cl><span class=c1>// 可以看到 a_2p 与 a_3p 为同行相邻列的元素，内存中连续。
+</span></span></span><span class=line><span class=cl><span class=c1></span><span class=n>c_20</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_30</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_21</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_31</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_22</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_32</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_23</span> <span class=o>+=</span> <span class=n>a_2p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=n>c_33</span> <span class=o>+=</span> <span class=n>a_3p</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>由于 <code>c00</code> 与 <code>c10</code> 再内存中连续，<code>a0p</code> 与 <code>a1p</code> 再内存中连续，所以我们可以用一个向量寄存器来储存这两个元素，并通过向量指令同时计算他们的结果。</p><p>我们先定义一个 union：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=k>typedef</span> <span class=k>union</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=kr>__m128d</span> <span class=n>v</span><span class=p>;</span> <span class=c1>// 1个 double 有8字节，即64比特，所以可以存两个 double
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=kt>double</span> <span class=n>d</span><span class=p>[</span><span class=mi>2</span><span class=p>];</span>
+</span></span><span class=line><span class=cl><span class=p>}</span> <span class=kt>v2df_t</span><span class=p>;</span>
+</span></span></code></pre></td></tr></table></div></div><p>在计算时我们以 <code>__m128d</code> 的类型解释它，并在最后赋值后以两个 double 的形式解释它。</p><p>然后有：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span><span class=lnt>43
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-c data-lang=c><span class=line><span class=cl><span class=n>b_p0</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>);</span> <span class=n>b_p1</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>1</span><span class=p>);</span> <span class=n>b_p2</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>2</span><span class=p>);</span> <span class=n>b_p3</span> <span class=o>=</span> <span class=o>&amp;</span><span class=nf>B</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>3</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=n>c_00_c_10</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>c_01_c_11</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>c_02_c_12</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>c_03_c_13</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>c_20_c_30</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>c_21_c_31</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>c_22_c_32</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl><span class=n>c_23_c_33</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_setzero_pd</span><span class=p>();</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=k>for</span> <span class=p>(</span><span class=n>p</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>p</span> <span class=o>&lt;</span> <span class=n>k</span><span class=p>;</span> <span class=n>p</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 同时加载第 p 行两个元素到向量寄存器中。
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>a_0p_a_1p</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_load_pd</span><span class=p>((</span><span class=kt>double</span> <span class=o>*</span><span class=p>)</span><span class=o>&amp;</span><span class=nf>A</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=n>p</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>  <span class=n>a_2p_a_3p</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_load_pd</span><span class=p>((</span><span class=kt>double</span> <span class=o>*</span><span class=p>)</span><span class=o>&amp;</span><span class=nf>A</span><span class=p>(</span><span class=mi>2</span><span class=p>,</span> <span class=n>p</span><span class=p>));</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=c1>// 将 b_p0，即一个 double 分别加载到向量寄存器中两个元素中。
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>b_p0</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_loaddup_pd</span><span class=p>((</span><span class=kt>double</span> <span class=o>*</span><span class=p>)</span><span class=n>b_p0</span><span class=o>++</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>b_p1</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_loaddup_pd</span><span class=p>((</span><span class=kt>double</span> <span class=o>*</span><span class=p>)</span><span class=n>b_p1</span><span class=o>++</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>b_p2</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_loaddup_pd</span><span class=p>((</span><span class=kt>double</span> <span class=o>*</span><span class=p>)</span><span class=n>b_p2</span><span class=o>++</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>  <span class=n>b_p3</span><span class=p>.</span><span class=n>v</span> <span class=o>=</span> <span class=nf>_mm_loaddup_pd</span><span class=p>((</span><span class=kt>double</span> <span class=o>*</span><span class=p>)</span><span class=n>b_p3</span><span class=o>++</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=cm>/* First row and second rows */</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_00_c_10</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_0p_a_1p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 上面运算相当于之前的：
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// c_00 += a_0p * b_p0;
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=c1>// c_10 += a_1p * b_p0;
+</span></span></span><span class=line><span class=cl><span class=c1></span>
+</span></span><span class=line><span class=cl>  <span class=c1>// 同理可看待下面的每个运算，由于一次计算两个元素，所以运算次数也从16次降为了8次。
+</span></span></span><span class=line><span class=cl><span class=c1></span>  <span class=n>c_01_c_11</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_0p_a_1p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_02_c_12</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_0p_a_1p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_03_c_13</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_0p_a_1p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  <span class=cm>/* Third and fourth rows */</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_20_c_30</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_2p_a_3p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p0</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_21_c_31</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_2p_a_3p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p1</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_22_c_32</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_2p_a_3p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p2</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>  <span class=n>c_23_c_33</span><span class=p>.</span><span class=n>v</span> <span class=o>+=</span> <span class=n>a_2p_a_3p</span><span class=p>.</span><span class=n>v</span> <span class=o>*</span> <span class=n>b_p3</span><span class=p>.</span><span class=n>v</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>0</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_00_c_10</span><span class=p>.</span><span class=n>d</span><span class=p>[</span><span class=mi>0</span><span class=p>];</span>
+</span></span><span class=line><span class=cl><span class=nf>C</span><span class=p>(</span><span class=mi>1</span><span class=p>,</span> <span class=mi>0</span><span class=p>)</span> <span class=o>+=</span> <span class=n>c_00_c_10</span><span class=p>.</span><span class=n>d</span><span class=p>[</span><span class=mi>1</span><span class=p>];</span>
+</span></span><span class=line><span class=cl><span class=c1>// 省略赋值操作。
+</span></span></span></code></pre></td></tr></table></div></div></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/cpp_move_semantics/><span class=mr-1.5>←</span><span>C++ 移动语义基础</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/2022_year_summary/><span>2022年度总结</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

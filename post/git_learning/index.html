@@ -1,0 +1,192 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Git学习笔记 - Jun's Blog</title><meta name=theme-color><meta name=description content="本文历经几次修改，主要是我对Git的一些学习和理解。其内容主要参考Pro Git。 在经过几次重写后，我决定以问答和解释相结合的形式来总结与Gi"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="Git学习笔记"><meta itemprop=description content="本文历经几次修改，主要是我对Git的一些学习和理解。其内容主要参考Pro Git。 在经过几次重写后，我决定以问答和解释相结合的形式来总结与Gi"><meta itemprop=datePublished content="2021-02-28T15:38:15+08:00"><meta itemprop=dateModified content="2021-02-28T15:38:15+08:00"><meta itemprop=wordCount content="2048"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="Git学习笔记"><meta name=twitter:description content="本文历经几次修改，主要是我对Git的一些学习和理解。其内容主要参考Pro Git。 在经过几次重写后，我决定以问答和解释相结合的形式来总结与Gi"><link rel=canonical href=https://www.junz.org/post/git_learning/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">Git学习笔记</h1><div class="text-sm antialiased opacity-60"><time>Feb 28, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><p>本文历经几次修改，主要是我对Git的一些学习和理解。其内容主要参考<a href=https://git-scm.com/book/en/v2>Pro Git</a>。
+在经过几次重写后，我决定以问答和解释相结合的形式来总结与Git相关的知识点。</p><h2 id=git的基本工作模型>git的基本工作模型</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>+--------------+      +--------------+      +----------+
+</span></span><span class=line><span class=cl>|              |      |              |      |          |
+</span></span><span class=line><span class=cl>| Working area | ===&gt; | Staging area | ===&gt; | Git repo |
+</span></span><span class=line><span class=cl>|              |      |              |      |          |
+</span></span><span class=line><span class=cl>+--------------+      +--------------+      +----------+
+</span></span></code></pre></td></tr></table></div></div><ul><li><strong>Working area</strong> 所有被Git track过的文件都认为被放到这个区域。</li><li><strong>Staging area</strong> 这里负责存放准备提交的文件。</li><li><strong>Git repo</strong> 这里就是提交后的文件了。</li></ul><h2 id=git分支>git分支</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>+-----+    +-----+    +-----+ &lt;---- master   HEAD
+</span></span><span class=line><span class=cl>|123a |&lt;---|1e69 |&lt;---|5adc | ^               |
+</span></span><span class=line><span class=cl>+-----+    +-----+    +-----+ |_______________+
+</span></span></code></pre></td></tr></table></div></div><p>在Git中，分支可以认为是指向一个commit的指针，其中<code>HEAD</code>永远指向当前所在的commit。</p><h2 id=怎么将文件加入staging-area>怎么将文件加入staging area?</h2><p>如果是提交单个文件, 可以使用<code>git add &lt;filename></code>，如果是提交多个文件，可以使用<code>git add .</code>或
+<code>git add *.c</code>等。如果想将一个文件中的多个修改分开提交，可以使用<code>git add -p</code>。</p><h2 id=怎么将加入staging-area的文件退回工作区>怎么将加入staging area的文件退回工作区？</h2><p>如果错误使用<code>git add .</code>将一些不想要的文件加入了staging area, 可以使用<code>git restore --staged &lt;filename></code>
+将文件退回工作区，并保留了更改。</p><h2 id=怎么撤销当前的提交并保留修改>怎么撤销当前的提交并保留修改？</h2><p>假如我们刚写好一个patch并想要写下一个，但是忘记切回主分支而是直接切了一个新分支，这就导致了新分支的base branch错了。我们可以先撤销掉当前的提交：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git reset HEAD^
+</span></span></code></pre></td></tr></table></div></div><p>接着我们再切一个新的分支提交就好了：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git checkout -b new-branch
+</span></span><span class=line><span class=cl>git commit -a
+</span></span></code></pre></td></tr></table></div></div><h2 id=怎么修改之前的commit>怎么修改之前的commit？</h2><p>假如你对上一个commit不满意，比如少提交了文件，写错了commit message等，你可以：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git commit --amend
+</span></span></code></pre></td></tr></table></div></div><h3 id=那怎么修改非上一个commit呢>那怎么修改非上一个commit呢？</h3><p>如果你想修改非上一个commit的话，就需要使用rebase了。</p><p>假设我们有如下的git历史：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>+----------+
+</span></span><span class=line><span class=cl>| commit 3 |
+</span></span><span class=line><span class=cl>+----------+
+</span></span><span class=line><span class=cl>     ||
+</span></span><span class=line><span class=cl>	 \/
+</span></span><span class=line><span class=cl>+----------+
+</span></span><span class=line><span class=cl>| commit 2 |
+</span></span><span class=line><span class=cl>+----------+
+</span></span><span class=line><span class=cl>     ||
+</span></span><span class=line><span class=cl>	 \/
+</span></span><span class=line><span class=cl>+----------+
+</span></span><span class=line><span class=cl>| commit 1 |
+</span></span><span class=line><span class=cl>+----------+
+</span></span></code></pre></td></tr></table></div></div><p>我们想修改<code>commit 2</code>的提交信息的话，可以：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git rebase -i HEAD~3
+</span></span></code></pre></td></tr></table></div></div><p>接着找到我们想修改的提交，将其<code>pick</code>改成<code>edit</code>，并保存退出。</p><p>这时候我们就可以使用<code>git commit --amend</code>来修改了，最后<code>git rebase --continue</code>就可以了。</p><h2 id=怎么将放弃工作区的修改>怎么将放弃工作区的修改？</h2><p>对于处于工作区的修改，可以使用<code>git restore &lt;filename></code> 丢弃修改。</p><p><strong>注意此操作不能撤销，修改的文件将直接丢失！</strong></p><h2 id=怎么查看git历史>怎么查看git历史？</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git log #默认的查看历史
+</span></span><span class=line><span class=cl>git log --pretty=oneline #以单行的形式查看历史
+</span></span><span class=line><span class=cl>git log --author=&#34;Jun Zhang&#34; #搜索指定作者的commits
+</span></span></code></pre></td></tr></table></div></div><h2 id=如何将多个commits合并成一个>如何将多个commits合并成一个？</h2><p>假设我们有git历史如下：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>commit 4ab5de2355dc7f910ed39d1b71052fc1d30a0da3 (HEAD -&gt; master)
+</span></span><span class=line><span class=cl>Author: Jun Zhang &lt;jun@junz.org&gt;
+</span></span><span class=line><span class=cl>Date:   Fri Dec 24 22:27:02 2021 +0800
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    finally fix up
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>commit 2d187de6e426e754084663a1710de9fd7a87c871
+</span></span><span class=line><span class=cl>Author: Jun Zhang &lt;jun@junz.org&gt;
+</span></span><span class=line><span class=cl>Date:   Fri Dec 24 22:26:25 2021 +0800
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    another fix up
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>commit ca0fe9c9c1f116cf83905aaacc0736359af3fb7e
+</span></span><span class=line><span class=cl>Author: Jun Zhang &lt;jun@junz.org&gt;
+</span></span><span class=line><span class=cl>Date:   Fri Dec 24 22:26:03 2021 +0800
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    fix up
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>commit 418809d837801cc8b2816567b373747599730736
+</span></span><span class=line><span class=cl>Author: Jun Zhang &lt;jun@junz.org&gt;
+</span></span><span class=line><span class=cl>Date:   Fri Dec 24 22:25:41 2021 +0800
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    Initial commit
+</span></span></code></pre></td></tr></table></div></div><p>我们想把前三个commit合并成一个，因为他们是相关联的。我们可以这么做：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git rebase -i HEAD~3
+</span></span></code></pre></td></tr></table></div></div><p>git会展示如下内容：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>pick ca0fe9c fix up
+</span></span><span class=line><span class=cl>pick 2d187de another fix up
+</span></span><span class=line><span class=cl>pick 4ab5de2 finally fix up
+</span></span><span class=line><span class=cl># Rebase 418809d..4ab5de2 onto 418809d (3 commands)
+</span></span></code></pre></td></tr></table></div></div><p>可以看到这里的历史与git log展示的历史顺序刚好相反。我们要把下面两个后来的commits
+合并到之前的那一个上，我们可以：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>pick ca0fe9c fix up
+</span></span><span class=line><span class=cl>squash 2d187de another fix up
+</span></span><span class=line><span class=cl>squash 4ab5de2 finally fix up
+</span></span></code></pre></td></tr></table></div></div><p>保存后git便会要求我们重写git commit messge，此后使用git log可以看到3个commits被合并成了一个。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>commit fedae1c1c4265c314166729c16a2855dfddc1f3c (HEAD -&gt; master)
+</span></span><span class=line><span class=cl>Author: Jun Zhang &lt;jun@junz.org&gt;
+</span></span><span class=line><span class=cl>Date:   Fri Dec 24 22:26:03 2021 +0800
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    squash 3 commits into one.
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>commit 418809d837801cc8b2816567b373747599730736
+</span></span><span class=line><span class=cl>Author: Jun Zhang &lt;jun@junz.org&gt;
+</span></span><span class=line><span class=cl>Date:   Fri Dec 24 22:25:41 2021 +0800
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>    Initial commit
+</span></span></code></pre></td></tr></table></div></div><h2 id=怎么在切换分支的时候暂时保存工作进度>怎么在切换分支的时候暂时保存工作进度？</h2><p>有时候在一个分支还没有工作完，我们并不想commit，但是因为一些原因我们又需要切一个新的分支，
+这时候便可以使用<code>git stash</code>这个命令。</p><p>比如我们现在在分支<code>dev</code>上，我们有一些在staging area的文件，而我们并不想立刻commit。我们可以
+使用<code>git stash</code>暂存更改。<code>git stash</code>会把更改放到一个栈型的结构中，后面我们可以继续使用<code>git stash</code>
+暂存更改。</p><p>使用<code>git stash list</code>来查看所有暂存的更改，据个例子：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>stash@{0}: WIP on master: fedae1c squash 3 commits into one.
+</span></span><span class=line><span class=cl>stash@{1}: WIP on dev: fedae1c squash 3 commits into one.
+</span></span></code></pre></td></tr></table></div></div><p>我们分别在dev分支和master分支上使用了<code>git stash</code>，可以看到我们有两个暂存的更改。</p><p>当我们准备好时，可以使用<code>git stash apply stash@{n}</code>来释放之前暂存的修改。如果直接使用<code>git stash apply</code>，
+会应用栈顶的那个更改。但是注意应用后在栈中存放的更改并不会丢失，而是继续存放在那除非手动使用<code>git stash drop stash@{n}</code>。
+也可以使用<code>git stash pop</code>应用栈顶的那个更改并自动将其<code>drop</code>掉。</p><h2 id=怎么合并分支>怎么合并分支？</h2><p>合并分支有两种策略，一种是默认的<code>git merge</code>，另一种是<code>git rebase</code>。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>                      +-----+
+</span></span><span class=line><span class=cl>              +-------|9e7d |(dev)
+</span></span><span class=line><span class=cl>              |       +-----+
+</span></span><span class=line><span class=cl>             \/
+</span></span><span class=line><span class=cl>+-----+    +-----+    +-----+
+</span></span><span class=line><span class=cl>|123a |&lt;---|1e69 |&lt;---|5adc |(master)
+</span></span><span class=line><span class=cl>+-----+    +-----+    +-----+
+</span></span></code></pre></td></tr></table></div></div><p>对于merge来说，其工作原理是由其公共commit后diff创建一个新的commit。即它会合并<code>9e7d</code>和<code>5adc</code>，并
+加到<code>5adc</code>上。</p><p>而对于rebase来说，其工作原理是将新的commit移动到其他分支上，像是改变了其parent。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git checkout -b dev
+</span></span><span class=line><span class=cl># make some changes
+</span></span><span class=line><span class=cl>git rebase master
+</span></span><span class=line><span class=cl>git checkout master
+</span></span><span class=line><span class=cl>git merge dev
+</span></span></code></pre></td></tr></table></div></div><p>如果说在开发过程中远程master分支有了新的commit，如上图的<code>5adc</code>，我们应该先：</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>git checkout master
+</span></span><span class=line><span class=cl>git pull
+</span></span></code></pre></td></tr></table></div></div><p>在此之后再使用<code>rebase</code>。</p></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/linux_boot/><span class=mr-1.5>←</span><span>Linux开机流程</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/file_directory/><span>Linux文件与目录</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>

@@ -1,0 +1,738 @@
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Postfix & Dovecot 自建邮箱服务 - Jun's Blog</title><meta name=theme-color><meta name=description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="Postfix & Dovecot 自建邮箱服务"><meta itemprop=description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><meta itemprop=datePublished content="2021-02-28T15:38:40+08:00"><meta itemprop=dateModified content="2021-02-28T15:38:40+08:00"><meta itemprop=wordCount content="1956"><meta itemprop=keywords content="Linux,"><meta name=twitter:card content="summary"><meta name=twitter:title content="Postfix & Dovecot 自建邮箱服务"><meta name=twitter:description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><link rel=canonical href=https://www.junz.org/post/mail_server/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">Postfix & Dovecot 自建邮箱服务</h1><div class="text-sm antialiased opacity-60"><time>Feb 28, 2021</time>
+<span class=mx-1>&#183;</span>
+<span>Jun</span></div></header><section><p><strong>本文中example.com hostname password请修改为自己的配置</strong></p><h4 id=环境>环境</h4><ul><li><p>系统CentOS 7</p></li><li><p>postfix</p></li><li><p>dovecot</p></li><li><p>mariadb</p></li><li><p>opendkim</p></li><li><p>nginx</p></li></ul><h4 id=安装必备软件>安装必备软件</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>yum -y update <span class=o>&amp;&amp;</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>yum -y install epel-release <span class=o>&amp;&amp;</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>yum -y update <span class=o>&amp;&amp;</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>yum -y install dovecot dovecot-mysql mariadb-server nginx opendkim python2-certbot-nginx nginx
+</span></span></code></pre></td></tr></table></div></div><h4 id=修改hosts文件>修改hosts文件</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>127.0.0.1 localhost.localdomain localhost
+</span></span><span class=line><span class=cl>你的公网ip hostname.example.com hostname
+</span></span></code></pre></td></tr></table></div></div><h4 id=nginx-设置>nginx 设置</h4><p>配置好相关设置</p><h4 id=安装证书>安装证书</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>certbot --nginx
+</span></span></code></pre></td></tr></table></div></div><h4 id=开启防火墙>开启防火墙</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --permanent --add-service<span class=o>=</span>http
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --permanent --add-service<span class=o>=</span>https
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --add-port<span class=o>=</span>80/tcp --permanent
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --add-port<span class=o>=</span>25/tcp --permanent
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --add-port<span class=o>=</span>465/tcp --permanent
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --add-port<span class=o>=</span>587/tcp --permanent
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --add-port<span class=o>=</span>110/tcp --permanent
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --add-port<span class=o>=</span>995/tcp --permanent
+</span></span><span class=line><span class=cl>firewall-cmd --zone<span class=o>=</span>public --add-port<span class=o>=</span>143/tcp --permanent
+</span></span><span class=line><span class=cl>firewall-cmd --permanent --add-service<span class=o>={</span>smtp,smtp-submission,smtps,imap,imaps<span class=o>}</span>
+</span></span><span class=line><span class=cl>firewall-cmd --reload
+</span></span></code></pre></td></tr></table></div></div><h4 id=配置数据库>配置数据库</h4><h5 id=启动数据库>启动数据库</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>systemctl start mariadb
+</span></span><span class=line><span class=cl>systemctl <span class=nb>enable</span> mariadb
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>mysql_secure_installation <span class=c1>#安全安装mysql，设置root登录密码</span>
+</span></span></code></pre></td></tr></table></div></div><h5 id=创建相关数据库>创建相关数据库</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=k>CREATE</span><span class=w> </span><span class=k>USER</span><span class=w> </span><span class=s1>&#39;mail_sys&#39;</span><span class=o>@</span><span class=s1>&#39;localhost&#39;</span><span class=w> </span><span class=n>IDENTIFIED</span><span class=w> </span><span class=k>BY</span><span class=w> </span><span class=s1>&#39;mail_sys&#39;</span><span class=p>;</span><span class=w> </span><span class=o>//</span><span class=err>创建用户</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>CREATE</span><span class=w> </span><span class=k>DATABASE</span><span class=w> </span><span class=n>mail_sys</span><span class=p>;</span><span class=w> </span><span class=o>//</span><span class=err>创建数据库</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>GRANT</span><span class=w> </span><span class=k>SELECT</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=n>mail_sys</span><span class=p>.</span><span class=o>*</span><span class=w> </span><span class=k>TO</span><span class=w> </span><span class=s1>&#39;mail_sys&#39;</span><span class=o>@</span><span class=s1>&#39;localhost&#39;</span><span class=w> </span><span class=n>IDENTIFIED</span><span class=w> </span><span class=k>BY</span><span class=w> </span><span class=s1>&#39;mail_sys&#39;</span><span class=p>;</span><span class=w> </span><span class=o>//</span><span class=err>提权</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=n>FLUSH</span><span class=w> </span><span class=k>PRIVILEGES</span><span class=p>;</span><span class=w> </span><span class=o>//</span><span class=err>刷新权限</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=n>USE</span><span class=w> </span><span class=n>mail_sys</span><span class=p>;</span><span class=w>  </span><span class=o>//</span><span class=err>进入数据库</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=o>`</span><span class=n>domains</span><span class=o>`</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=w> </span><span class=nb>int</span><span class=p>(</span><span class=mi>11</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=w> </span><span class=n>auto_increment</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>name</span><span class=o>`</span><span class=w> </span><span class=nb>varchar</span><span class=p>(</span><span class=mi>50</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>PRIMARY</span><span class=w> </span><span class=k>KEY</span><span class=w> </span><span class=p>(</span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>)</span><span class=w> </span><span class=n>ENGINE</span><span class=o>=</span><span class=n>InnoDB</span><span class=w> </span><span class=k>DEFAULT</span><span class=w> </span><span class=n>CHARSET</span><span class=o>=</span><span class=n>utf8</span><span class=p>;</span><span class=w>   </span><span class=o>//</span><span class=err>创建域名表</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=o>`</span><span class=n>users</span><span class=o>`</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=w> </span><span class=nb>int</span><span class=p>(</span><span class=mi>11</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=w> </span><span class=n>auto_increment</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>domain_id</span><span class=o>`</span><span class=w> </span><span class=nb>int</span><span class=p>(</span><span class=mi>11</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>password</span><span class=o>`</span><span class=w> </span><span class=nb>varchar</span><span class=p>(</span><span class=mi>106</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>email</span><span class=o>`</span><span class=w> </span><span class=nb>varchar</span><span class=p>(</span><span class=mi>100</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>PRIMARY</span><span class=w> </span><span class=k>KEY</span><span class=w> </span><span class=p>(</span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>UNIQUE</span><span class=w> </span><span class=k>KEY</span><span class=w> </span><span class=o>`</span><span class=n>email</span><span class=o>`</span><span class=w> </span><span class=p>(</span><span class=o>`</span><span class=n>email</span><span class=o>`</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>FOREIGN</span><span class=w> </span><span class=k>KEY</span><span class=w> </span><span class=p>(</span><span class=n>domain_id</span><span class=p>)</span><span class=w> </span><span class=k>REFERENCES</span><span class=w> </span><span class=n>virtual_domains</span><span class=p>(</span><span class=n>id</span><span class=p>)</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=k>DELETE</span><span class=w> </span><span class=k>CASCADE</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>)</span><span class=w> </span><span class=n>ENGINE</span><span class=o>=</span><span class=n>InnoDB</span><span class=w> </span><span class=k>DEFAULT</span><span class=w> </span><span class=n>CHARSET</span><span class=o>=</span><span class=n>utf8</span><span class=p>;</span><span class=w>    </span><span class=o>//</span><span class=err>创建用户表</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>CREATE</span><span class=w> </span><span class=k>TABLE</span><span class=w> </span><span class=o>`</span><span class=n>aliases</span><span class=o>`</span><span class=w> </span><span class=p>(</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=w> </span><span class=nb>int</span><span class=p>(</span><span class=mi>11</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=w> </span><span class=n>auto_increment</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>domain_id</span><span class=o>`</span><span class=w> </span><span class=nb>int</span><span class=p>(</span><span class=mi>11</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=k>source</span><span class=o>`</span><span class=w> </span><span class=nb>varchar</span><span class=p>(</span><span class=mi>100</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=o>`</span><span class=n>destination</span><span class=o>`</span><span class=w> </span><span class=nb>varchar</span><span class=p>(</span><span class=mi>100</span><span class=p>)</span><span class=w> </span><span class=k>NOT</span><span class=w> </span><span class=k>NULL</span><span class=p>,</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>PRIMARY</span><span class=w> </span><span class=k>KEY</span><span class=w> </span><span class=p>(</span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=k>FOREIGN</span><span class=w> </span><span class=k>KEY</span><span class=w> </span><span class=p>(</span><span class=n>domain_id</span><span class=p>)</span><span class=w> </span><span class=k>REFERENCES</span><span class=w> </span><span class=n>virtual_domains</span><span class=p>(</span><span class=n>id</span><span class=p>)</span><span class=w> </span><span class=k>ON</span><span class=w> </span><span class=k>DELETE</span><span class=w> </span><span class=k>CASCADE</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=p>)</span><span class=w> </span><span class=n>ENGINE</span><span class=o>=</span><span class=n>InnoDB</span><span class=w> </span><span class=k>DEFAULT</span><span class=w> </span><span class=n>CHARSET</span><span class=o>=</span><span class=n>utf8</span><span class=p>;</span><span class=w>    </span><span class=o>//</span><span class=err>创建别名表</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h5 id=添加数据>添加数据</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=k>INSERT</span><span class=w> </span><span class=k>INTO</span><span class=w> </span><span class=o>`</span><span class=n>mail_sys</span><span class=o>`</span><span class=p>.</span><span class=o>`</span><span class=n>domains</span><span class=o>`</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=w> </span><span class=p>,</span><span class=o>`</span><span class=n>name</span><span class=o>`</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>VALUES</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=s1>&#39;1&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;example.com&#39;</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=s1>&#39;2&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;hostname.example.com&#39;</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=s1>&#39;3&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;hostname&#39;</span><span class=p>),</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=s1>&#39;4&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;localhost.example.com&#39;</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>INSERT</span><span class=w> </span><span class=k>INTO</span><span class=w> </span><span class=o>`</span><span class=n>mail_sys</span><span class=o>`</span><span class=p>.</span><span class=o>`</span><span class=n>users</span><span class=o>`</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=p>,</span><span class=w> </span><span class=o>`</span><span class=n>domain_id</span><span class=o>`</span><span class=p>,</span><span class=w> </span><span class=o>`</span><span class=n>password</span><span class=o>`</span><span class=w> </span><span class=p>,</span><span class=w> </span><span class=o>`</span><span class=n>email</span><span class=o>`</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>VALUES</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=s1>&#39;1&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;1&#39;</span><span class=p>,</span><span class=w> </span><span class=n>ENCRYPT</span><span class=p>(</span><span class=s1>&#39;PASSWORD&#39;</span><span class=p>,</span><span class=w> </span><span class=n>CONCAT</span><span class=p>(</span><span class=s1>&#39;$6$&#39;</span><span class=p>,</span><span class=w> </span><span class=k>SUBSTRING</span><span class=p>(</span><span class=n>SHA</span><span class=p>(</span><span class=n>RAND</span><span class=p>()),</span><span class=w> </span><span class=o>-</span><span class=mi>16</span><span class=p>))),</span><span class=w> </span><span class=s1>&#39;user@example.com&#39;</span><span class=p>);</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>INSERT</span><span class=w> </span><span class=k>INTO</span><span class=w> </span><span class=o>`</span><span class=n>mail_sys</span><span class=o>`</span><span class=p>.</span><span class=o>`</span><span class=n>aliases</span><span class=o>`</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=o>`</span><span class=n>id</span><span class=o>`</span><span class=p>,</span><span class=w> </span><span class=o>`</span><span class=n>domain_id</span><span class=o>`</span><span class=p>,</span><span class=w> </span><span class=o>`</span><span class=k>source</span><span class=o>`</span><span class=p>,</span><span class=w> </span><span class=o>`</span><span class=n>destination</span><span class=o>`</span><span class=p>)</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>VALUES</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w>  </span><span class=p>(</span><span class=s1>&#39;1&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;1&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;user@example.com&#39;</span><span class=p>,</span><span class=w> </span><span class=s1>&#39;user@example.com&#39;</span><span class=p>);</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h5 id=检查配置>检查配置</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-sql data-lang=sql><span class=line><span class=cl><span class=k>SELECT</span><span class=w> </span><span class=o>*</span><span class=w> </span><span class=k>FROM</span><span class=w> </span><span class=n>mail_sys</span><span class=p>.</span><span class=n>domains</span><span class=p>;</span><span class=w> </span><span class=o>//</span><span class=err>查看域名表</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>SELECT</span><span class=w> </span><span class=o>*</span><span class=w> </span><span class=k>FROM</span><span class=w> </span><span class=n>mail_sys</span><span class=p>.</span><span class=n>users</span><span class=p>;</span><span class=w>   </span><span class=o>//</span><span class=err>查看用户表</span><span class=w>
+</span></span></span><span class=line><span class=cl><span class=w></span><span class=k>SELECT</span><span class=w> </span><span class=o>*</span><span class=w> </span><span class=k>FROM</span><span class=w> </span><span class=n>mail_sys</span><span class=p>.</span><span class=n>aliases</span><span class=p>;</span><span class=w>  </span><span class=o>//</span><span class=err>查看别名表</span><span class=w>
+</span></span></span></code></pre></td></tr></table></div></div><h4 id=设置邮箱专用用户>设置邮箱专用用户</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>groupadd -g <span class=m>2000</span> mail_sys
+</span></span><span class=line><span class=cl>useradd -g mail_sys -u <span class=m>2000</span> mail_sys -d /var/spool/mail -s /sbin/nologin
+</span></span><span class=line><span class=cl>chown -R mail_sys:mail_sys /var/spool/mail
+</span></span></code></pre></td></tr></table></div></div><h4 id=配置opendkim>配置OpenDKIM</h4><h5 id=修改配置文件>修改配置文件</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/opendkim.conf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>Syslog yes
+</span></span><span class=line><span class=cl>UMask 002
+</span></span><span class=line><span class=cl>OversignHeaders From
+</span></span><span class=line><span class=cl>Socket inet:8891@127.0.0.1
+</span></span><span class=line><span class=cl>Domain example.com # 您的域名，需要修改
+</span></span><span class=line><span class=cl>KeyFile /etc/opendkim/keys/mail.private
+</span></span><span class=line><span class=cl>Selector mail
+</span></span><span class=line><span class=cl>RequireSafeKeys no
+</span></span></code></pre></td></tr></table></div></div><h5 id=生成私钥>生成私钥</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>opendkim-genkey -D /etc/opendkim/keys/ -d example.com -s mail <span class=o>&amp;&amp;</span> <span class=se>\
+</span></span></span><span class=line><span class=cl><span class=se></span>chown -R opendkim:opendkim /etc/opendkim/keys/
+</span></span></code></pre></td></tr></table></div></div><h4 id=配置postfix>配置postfix</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>cp /etc/postfix/main.cf /etc/postfix/main.cf.bak  //备份文件
+</span></span><span class=line><span class=cl>cp /etc/postfix/master.cf /etc/postfix/master.cf.bak 
+</span></span></code></pre></td></tr></table></div></div><p>修改main.cf配置文件</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/postfix/main.cf
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>  1
+</span><span class=lnt>  2
+</span><span class=lnt>  3
+</span><span class=lnt>  4
+</span><span class=lnt>  5
+</span><span class=lnt>  6
+</span><span class=lnt>  7
+</span><span class=lnt>  8
+</span><span class=lnt>  9
+</span><span class=lnt> 10
+</span><span class=lnt> 11
+</span><span class=lnt> 12
+</span><span class=lnt> 13
+</span><span class=lnt> 14
+</span><span class=lnt> 15
+</span><span class=lnt> 16
+</span><span class=lnt> 17
+</span><span class=lnt> 18
+</span><span class=lnt> 19
+</span><span class=lnt> 20
+</span><span class=lnt> 21
+</span><span class=lnt> 22
+</span><span class=lnt> 23
+</span><span class=lnt> 24
+</span><span class=lnt> 25
+</span><span class=lnt> 26
+</span><span class=lnt> 27
+</span><span class=lnt> 28
+</span><span class=lnt> 29
+</span><span class=lnt> 30
+</span><span class=lnt> 31
+</span><span class=lnt> 32
+</span><span class=lnt> 33
+</span><span class=lnt> 34
+</span><span class=lnt> 35
+</span><span class=lnt> 36
+</span><span class=lnt> 37
+</span><span class=lnt> 38
+</span><span class=lnt> 39
+</span><span class=lnt> 40
+</span><span class=lnt> 41
+</span><span class=lnt> 42
+</span><span class=lnt> 43
+</span><span class=lnt> 44
+</span><span class=lnt> 45
+</span><span class=lnt> 46
+</span><span class=lnt> 47
+</span><span class=lnt> 48
+</span><span class=lnt> 49
+</span><span class=lnt> 50
+</span><span class=lnt> 51
+</span><span class=lnt> 52
+</span><span class=lnt> 53
+</span><span class=lnt> 54
+</span><span class=lnt> 55
+</span><span class=lnt> 56
+</span><span class=lnt> 57
+</span><span class=lnt> 58
+</span><span class=lnt> 59
+</span><span class=lnt> 60
+</span><span class=lnt> 61
+</span><span class=lnt> 62
+</span><span class=lnt> 63
+</span><span class=lnt> 64
+</span><span class=lnt> 65
+</span><span class=lnt> 66
+</span><span class=lnt> 67
+</span><span class=lnt> 68
+</span><span class=lnt> 69
+</span><span class=lnt> 70
+</span><span class=lnt> 71
+</span><span class=lnt> 72
+</span><span class=lnt> 73
+</span><span class=lnt> 74
+</span><span class=lnt> 75
+</span><span class=lnt> 76
+</span><span class=lnt> 77
+</span><span class=lnt> 78
+</span><span class=lnt> 79
+</span><span class=lnt> 80
+</span><span class=lnt> 81
+</span><span class=lnt> 82
+</span><span class=lnt> 83
+</span><span class=lnt> 84
+</span><span class=lnt> 85
+</span><span class=lnt> 86
+</span><span class=lnt> 87
+</span><span class=lnt> 88
+</span><span class=lnt> 89
+</span><span class=lnt> 90
+</span><span class=lnt> 91
+</span><span class=lnt> 92
+</span><span class=lnt> 93
+</span><span class=lnt> 94
+</span><span class=lnt> 95
+</span><span class=lnt> 96
+</span><span class=lnt> 97
+</span><span class=lnt> 98
+</span><span class=lnt> 99
+</span><span class=lnt>100
+</span><span class=lnt>101
+</span><span class=lnt>102
+</span><span class=lnt>103
+</span><span class=lnt>104
+</span><span class=lnt>105
+</span><span class=lnt>106
+</span><span class=lnt>107
+</span><span class=lnt>108
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-go data-lang=go><span class=line><span class=cl><span class=err>#</span> <span class=nx>See</span> <span class=o>/</span><span class=nx>usr</span><span class=o>/</span><span class=nx>share</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>main</span><span class=p>.</span><span class=nx>cf</span><span class=p>.</span><span class=nx>dist</span> <span class=k>for</span> <span class=nx>a</span> <span class=nx>commented</span><span class=p>,</span> <span class=nx>more</span> <span class=nx>complete</span> <span class=nx>version</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Debian</span> <span class=nx>specific</span><span class=p>:</span>  <span class=nx>Specifying</span> <span class=nx>a</span> <span class=nx>file</span> <span class=nx>name</span> <span class=nx>will</span> <span class=nx>cause</span> <span class=nx>the</span> <span class=nx>first</span>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>line</span> <span class=nx>of</span> <span class=nx>that</span> <span class=nx>file</span> <span class=nx>to</span> <span class=nx>be</span> <span class=nx>used</span> <span class=nx>as</span> <span class=nx>the</span> <span class=nx>name</span><span class=p>.</span>  <span class=nx>The</span> <span class=nx>Debian</span> <span class=k>default</span>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>is</span> <span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>mailname</span><span class=p>.</span>
+</span></span><span class=line><span class=cl><span class=err>#</span><span class=nx>myorigin</span> <span class=p>=</span> <span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>mailname</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_banner</span> <span class=p>=</span> <span class=err>$</span><span class=nx>myhostname</span> <span class=nx>ESMTP</span> <span class=err>$</span><span class=nf>mail_name</span> <span class=p>(</span><span class=nx>CentOS</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=nx>biff</span> <span class=p>=</span> <span class=nx>no</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>appending</span> <span class=p>.</span><span class=nx>domain</span> <span class=nx>is</span> <span class=nx>the</span> <span class=nx>MUA</span><span class=err>&#39;</span><span class=nx>s</span> <span class=nx>job</span><span class=p>.</span>
+</span></span><span class=line><span class=cl><span class=nx>append_dot_mydomain</span> <span class=p>=</span> <span class=nx>no</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Uncomment</span> <span class=nx>the</span> <span class=nx>next</span> <span class=nx>line</span> <span class=nx>to</span> <span class=nx>generate</span> <span class=s>&#34;delayed mail&#34;</span> <span class=nx>warnings</span>
+</span></span><span class=line><span class=cl><span class=err>#</span><span class=nx>delay_warning_time</span> <span class=p>=</span> <span class=mi>4</span><span class=nx>h</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nx>readme_directory</span> <span class=p>=</span> <span class=nx>no</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>TLS</span> <span class=nx>parameters</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_tls_cert_file</span><span class=p>=</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>letsencrypt</span><span class=o>/</span><span class=nx>live</span><span class=o>/</span><span class=nx>example</span><span class=p>.</span><span class=nx>com</span><span class=o>/</span><span class=nx>fullchain</span><span class=p>.</span><span class=nx>pem</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_tls_key_file</span><span class=p>=</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>letsencrypt</span><span class=o>/</span><span class=nx>live</span><span class=o>/</span><span class=nx>example</span><span class=p>.</span><span class=nx>com</span><span class=o>/</span><span class=nx>privkey</span><span class=p>.</span><span class=nx>pem</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_use_tls</span><span class=p>=</span><span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_tls_auth_only</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=nx>smtp_tls_security_level</span> <span class=p>=</span> <span class=nx>may</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_tls_security_level</span> <span class=p>=</span> <span class=nx>may</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_sasl_security_options</span> <span class=p>=</span> <span class=nx>noanonymous</span><span class=p>,</span> <span class=nx>noplaintext</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_sasl_tls_security_options</span> <span class=p>=</span> <span class=nx>noanonymous</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Authentication</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_sasl_type</span> <span class=p>=</span> <span class=nx>dovecot</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_sasl_path</span> <span class=p>=</span> <span class=nx>private</span><span class=o>/</span><span class=nx>auth</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_sasl_auth_enable</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>See</span> <span class=o>/</span><span class=nx>usr</span><span class=o>/</span><span class=nx>share</span><span class=o>/</span><span class=nx>doc</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>TLS_README</span><span class=p>.</span><span class=nx>gz</span> <span class=nx>in</span> <span class=nx>the</span> <span class=nx>postfix</span><span class=o>-</span><span class=nx>doc</span> <span class=kn>package</span> <span class=k>for</span>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>information</span> <span class=nx>on</span> <span class=nx>enabling</span> <span class=nx>SSL</span> <span class=nx>in</span> <span class=nx>the</span> <span class=nx>smtp</span> <span class=nx>client</span><span class=p>.</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Restrictions</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_helo_restrictions</span> <span class=p>=</span>
+</span></span><span class=line><span class=cl>        <span class=nx>permit_mynetworks</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>permit_sasl_authenticated</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>reject_invalid_helo_hostname</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>reject_non_fqdn_helo_hostname</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_recipient_restrictions</span> <span class=p>=</span>
+</span></span><span class=line><span class=cl>        <span class=nx>permit_mynetworks</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>permit_sasl_authenticated</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>permit_auth_destination</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>reject_unauth_destination</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_sender_restrictions</span> <span class=p>=</span>
+</span></span><span class=line><span class=cl>        <span class=nx>permit_mynetworks</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>permit_sasl_authenticated</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>reject_non_fqdn_sender</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=nx>reject_unknown_sender_domain</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>See</span> <span class=o>/</span><span class=nx>usr</span><span class=o>/</span><span class=nx>share</span><span class=o>/</span><span class=nx>doc</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>TLS_README</span><span class=p>.</span><span class=nx>gz</span> <span class=nx>in</span> <span class=nx>the</span> <span class=nx>postfix</span><span class=o>-</span><span class=nx>doc</span> <span class=kn>package</span> <span class=k>for</span>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>information</span> <span class=nx>on</span> <span class=nx>enabling</span> <span class=nx>SSL</span> <span class=nx>in</span> <span class=nx>the</span> <span class=nx>smtp</span> <span class=nx>client</span><span class=p>.</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nx>myhostname</span> <span class=p>=</span> <span class=nx>example</span><span class=p>.</span><span class=nx>com</span>
+</span></span><span class=line><span class=cl><span class=nx>alias_maps</span> <span class=p>=</span> <span class=nx>hash</span><span class=p>:</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>aliases</span>
+</span></span><span class=line><span class=cl><span class=nx>alias_database</span> <span class=p>=</span> <span class=nx>hash</span><span class=p>:</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>aliases</span>
+</span></span><span class=line><span class=cl><span class=nx>mydomain</span> <span class=p>=</span> <span class=nx>example</span><span class=p>.</span><span class=nx>com</span>
+</span></span><span class=line><span class=cl><span class=nx>myorigin</span> <span class=p>=</span> <span class=err>$</span><span class=nx>mydomain</span>
+</span></span><span class=line><span class=cl><span class=nx>mydestination</span> <span class=p>=</span> <span class=nx>localhost</span>
+</span></span><span class=line><span class=cl><span class=nx>relayhost</span> <span class=p>=</span>
+</span></span><span class=line><span class=cl><span class=nx>mynetworks</span> <span class=p>=</span> <span class=mf>127.0.0.0</span><span class=o>/</span><span class=mi>8</span> <span class=p>[::</span><span class=nx>ffff</span><span class=p>:</span><span class=mf>127.0.0.0</span><span class=p>]</span><span class=o>/</span><span class=mi>104</span> <span class=p>[::</span><span class=mi>1</span><span class=p>]</span><span class=o>/</span><span class=mi>128</span>
+</span></span><span class=line><span class=cl><span class=nx>mailbox_size_limit</span> <span class=p>=</span> <span class=mi>0</span>
+</span></span><span class=line><span class=cl><span class=nx>recipient_delimiter</span> <span class=p>=</span> <span class=o>+</span>
+</span></span><span class=line><span class=cl><span class=nx>inet_interfaces</span> <span class=p>=</span> <span class=nx>all</span>
+</span></span><span class=line><span class=cl><span class=nx>inet_protocols</span> <span class=p>=</span> <span class=nx>all</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Handing</span> <span class=nx>off</span> <span class=nx>local</span> <span class=nx>delivery</span> <span class=nx>to</span> <span class=nx>Dovecot</span><span class=err>&#39;</span><span class=nx>s</span> <span class=nx>LMTP</span><span class=p>,</span> <span class=nx>and</span> <span class=nx>telling</span> <span class=nx>it</span> <span class=nx>where</span> <span class=nx>to</span> <span class=nx>store</span> <span class=nx>mail</span>
+</span></span><span class=line><span class=cl><span class=nx>virtual_transport</span> <span class=p>=</span> <span class=nx>lmtp</span><span class=p>:</span><span class=nx>unix</span><span class=p>:</span><span class=nx>private</span><span class=o>/</span><span class=nx>dovecot</span><span class=o>-</span><span class=nx>lmtp</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Virtual</span> <span class=nx>domains</span><span class=p>,</span> <span class=nx>users</span><span class=p>,</span> <span class=nx>and</span> <span class=nx>aliases</span>
+</span></span><span class=line><span class=cl><span class=nx>virtual_mailbox_domains</span> <span class=p>=</span> <span class=nx>mysql</span><span class=p>:</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>mysql_mailbox_domains</span><span class=p>.</span><span class=nx>cf</span>
+</span></span><span class=line><span class=cl><span class=nx>virtual_mailbox_maps</span> <span class=p>=</span> <span class=nx>mysql</span><span class=p>:</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>mysql_mailbox_maps</span><span class=p>.</span><span class=nx>cf</span>
+</span></span><span class=line><span class=cl><span class=nx>virtual_alias_maps</span> <span class=p>=</span> <span class=nx>mysql</span><span class=p>:</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>mysql_alias_maps</span><span class=p>.</span><span class=nx>cf</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_sender_login_maps</span> <span class=p>=</span> <span class=nx>mysql</span><span class=p>:</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>mysql_mailbox_maps</span><span class=p>.</span><span class=nx>cf</span><span class=p>,</span> <span class=nx>mysql</span><span class=p>:</span><span class=o>/</span><span class=nx>etc</span><span class=o>/</span><span class=nx>postfix</span><span class=o>/</span><span class=nx>mysql_alias_maps</span><span class=p>.</span><span class=nx>cf</span>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Even</span> <span class=nx>more</span> <span class=nx>Restrictions</span> <span class=nx>and</span> <span class=nx>MTA</span> <span class=nx>params</span>
+</span></span><span class=line><span class=cl><span class=nx>disable_vrfy_command</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=nx>strict_rfc821_envelopes</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=err>#</span><span class=nx>smtpd_etrn_restrictions</span> <span class=p>=</span> <span class=nx>reject</span>
+</span></span><span class=line><span class=cl><span class=err>#</span><span class=nx>smtpd_reject_unlisted_sender</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=err>#</span><span class=nx>smtpd_reject_unlisted_recipient</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_delay_reject</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_helo_required</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=nx>smtp_always_send_ehlo</span> <span class=p>=</span> <span class=nx>yes</span>
+</span></span><span class=line><span class=cl><span class=err>#</span><span class=nx>smtpd_hard_error_limit</span> <span class=p>=</span> <span class=mi>1</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_timeout</span> <span class=p>=</span> <span class=mi>30</span><span class=nx>s</span>
+</span></span><span class=line><span class=cl><span class=nx>smtp_helo_timeout</span> <span class=p>=</span> <span class=mi>15</span><span class=nx>s</span>
+</span></span><span class=line><span class=cl><span class=nx>smtp_rcpt_timeout</span> <span class=p>=</span> <span class=mi>15</span><span class=nx>s</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_recipient_limit</span> <span class=p>=</span> <span class=mi>40</span>
+</span></span><span class=line><span class=cl><span class=nx>minimal_backoff_time</span> <span class=p>=</span> <span class=mi>180</span><span class=nx>s</span>
+</span></span><span class=line><span class=cl><span class=nx>maximal_backoff_time</span> <span class=p>=</span> <span class=mi>3</span><span class=nx>h</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=err>#</span> <span class=nx>Reply</span> <span class=nx>Rejection</span> <span class=nx>Codes</span>
+</span></span><span class=line><span class=cl><span class=nx>invalid_hostname_reject_code</span> <span class=p>=</span> <span class=mi>550</span>
+</span></span><span class=line><span class=cl><span class=nx>non_fqdn_reject_code</span> <span class=p>=</span> <span class=mi>550</span>
+</span></span><span class=line><span class=cl><span class=nx>unknown_address_reject_code</span> <span class=p>=</span> <span class=mi>550</span>
+</span></span><span class=line><span class=cl><span class=nx>unknown_client_reject_code</span> <span class=p>=</span> <span class=mi>550</span>
+</span></span><span class=line><span class=cl><span class=nx>unknown_hostname_reject_code</span> <span class=p>=</span> <span class=mi>550</span>
+</span></span><span class=line><span class=cl><span class=nx>unverified_recipient_reject_code</span> <span class=p>=</span> <span class=mi>550</span>
+</span></span><span class=line><span class=cl><span class=nx>unverified_sender_reject_code</span> <span class=p>=</span> <span class=mi>550</span>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl><span class=nx>milter_protocol</span> <span class=p>=</span> <span class=mi>2</span>
+</span></span><span class=line><span class=cl><span class=nx>milter_default_action</span> <span class=p>=</span> <span class=nx>accept</span>
+</span></span><span class=line><span class=cl><span class=nx>smtpd_milters</span> <span class=p>=</span> <span class=nx>inet</span><span class=p>:</span><span class=mf>127.0.0.1</span><span class=p>:</span><span class=mi>8891</span>
+</span></span><span class=line><span class=cl><span class=nx>non_smtpd_milters</span> <span class=p>=</span> <span class=nx>inet</span><span class=p>:</span><span class=mf>127.0.0.1</span><span class=p>:</span><span class=mi>8891</span>
+</span></span></code></pre></td></tr></table></div></div><p>修改master.cf配置文件</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/postfix/master.cf
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>smtp      inet  n       -       n       -       -       smtpd
+</span></span><span class=line><span class=cl>submission inet n       -       n       -       -       smtpd
+</span></span><span class=line><span class=cl>       -o smtpd_tls_security_level=encrypt
+</span></span><span class=line><span class=cl>smtps     inet  n       -       n       -       -       smtpd
+</span></span><span class=line><span class=cl>       -o smtpd_tls_wrappermode=yes
+</span></span><span class=line><span class=cl>pickup    unix  n       -       n       60      1       pickup
+</span></span><span class=line><span class=cl>cleanup   unix  n       -       n       -       0       cleanup
+</span></span><span class=line><span class=cl>qmgr      unix  n       -       n       300     1       qmgr
+</span></span><span class=line><span class=cl>tlsmgr    unix  -       -       n       1000?   1       tlsmgr
+</span></span><span class=line><span class=cl>rewrite   unix  -       -       n       -       -       trivial-rewrite
+</span></span><span class=line><span class=cl>bounce    unix  -       -       n       -       0       bounce
+</span></span><span class=line><span class=cl>defer     unix  -       -       n       -       0       bounce
+</span></span><span class=line><span class=cl>trace     unix  -       -       n       -       0       bounce
+</span></span><span class=line><span class=cl>verify    unix  -       -       n       -       1       verify
+</span></span><span class=line><span class=cl>flush     unix  n       -       n       1000?   0       flush
+</span></span><span class=line><span class=cl>proxymap  unix  -       -       n       -       -       proxymap
+</span></span><span class=line><span class=cl>proxywrite unix -       -       n       -       1       proxymap
+</span></span><span class=line><span class=cl>smtp      unix  -       -       n       -       -       smtp
+</span></span><span class=line><span class=cl>relay     unix  -       -       n       -       -       smtp
+</span></span><span class=line><span class=cl>       -o smtp_helo_timeout=120 -o smtp_connect_timeout=120
+</span></span><span class=line><span class=cl>showq     unix  n       -       n       -       -       showq
+</span></span><span class=line><span class=cl>error     unix  -       -       n       -       -       error
+</span></span><span class=line><span class=cl>retry     unix  -       -       n       -       -       error
+</span></span><span class=line><span class=cl>discard   unix  -       -       n       -       -       discard
+</span></span><span class=line><span class=cl>local     unix  -       n       n       -       -       local
+</span></span><span class=line><span class=cl>virtual   unix  -       n       n       -       -       virtual
+</span></span><span class=line><span class=cl>lmtp      unix  -       -       n       -       -       lmtp
+</span></span><span class=line><span class=cl>anvil     unix  -       -       n       -       1       anvil
+</span></span><span class=line><span class=cl>scache    unix  -       -       n       -       1       scache
+</span></span><span class=line><span class=cl>policyd-spf    unix  -       n       n       -       0       spawn
+</span></span><span class=line><span class=cl>       user=mail_sys argv=/usr/libexec/postfix/policyd-spf
+</span></span></code></pre></td></tr></table></div></div><h5 id=修改postfix相关配置文件与mysql对接>修改postfix相关配置文件，与MySQL对接</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/postfix/mysql_mailbox_domains.cf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>user = mail_sys
+</span></span><span class=line><span class=cl>password = mail_sys
+</span></span><span class=line><span class=cl>hosts = localhost
+</span></span><span class=line><span class=cl>dbname = mail_sys
+</span></span><span class=line><span class=cl>query = SELECT 1 FROM domains WHERE name=&#39;%s&#39;
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/postfix/mysql_mailbox_maps.cf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>user = mail_sys
+</span></span><span class=line><span class=cl>password = mail_sys
+</span></span><span class=line><span class=cl>hosts = localhost
+</span></span><span class=line><span class=cl>dbname = mail_sys
+</span></span><span class=line><span class=cl>query = SELECT email FROM users WHERE email=&#39;%s&#39;
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/postfix/mysql_alias_maps.cf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>user = mail_sys
+</span></span><span class=line><span class=cl>password = mail_sys
+</span></span><span class=line><span class=cl>hosts = localhost
+</span></span><span class=line><span class=cl>dbname = mail_sys
+</span></span><span class=line><span class=cl>query = SELECT destination FROM aliases WHERE source=&#39;%s&#39;
+</span></span></code></pre></td></tr></table></div></div><h5 id=测试postfix与mysql对接状态>测试postfix与MySQL对接状态</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>systemctl start postfix
+</span></span><span class=line><span class=cl>postmap -q example.com mysql:/etc/postfix/mysql_mailbox_domains.cf <span class=c1>#应返回1</span>
+</span></span><span class=line><span class=cl>postmap -q user@example.com mysql:/etc/postfix/mysql_mailbox_maps.cf <span class=c1>#应返回1</span>
+</span></span><span class=line><span class=cl>postmap -q user@example.com mysql:/etc/postfix/mysql_alias_maps.cf  <span class=c1>#应返回用户名</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=配置dovecot>配置dovecot</h4><h5 id=修改配置文件-1>修改配置文件</h5><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/dovecot-sql.conf.ext
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>driver = mysql
+</span></span><span class=line><span class=cl>connect = host=localhost dbname=mail_sys user=mail_sys password=mail_sys
+</span></span><span class=line><span class=cl>default_pass_scheme = SHA512-CRYPT
+</span></span><span class=line><span class=cl>password_query = SELECT email as user, password FROM users WHERE email=&#39;%u&#39;;
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span><span class=lnt>17
+</span><span class=lnt>18
+</span><span class=lnt>19
+</span><span class=lnt>20
+</span><span class=lnt>21
+</span><span class=lnt>22
+</span><span class=lnt>23
+</span><span class=lnt>24
+</span><span class=lnt>25
+</span><span class=lnt>26
+</span><span class=lnt>27
+</span><span class=lnt>28
+</span><span class=lnt>29
+</span><span class=lnt>30
+</span><span class=lnt>31
+</span><span class=lnt>32
+</span><span class=lnt>33
+</span><span class=lnt>34
+</span><span class=lnt>35
+</span><span class=lnt>36
+</span><span class=lnt>37
+</span><span class=lnt>38
+</span><span class=lnt>39
+</span><span class=lnt>40
+</span><span class=lnt>41
+</span><span class=lnt>42
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/10-master.conf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>service imap-login {
+</span></span><span class=line><span class=cl>  inet_listener imap {
+</span></span><span class=line><span class=cl>    port = 143
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>  inet_listener imaps {
+</span></span><span class=line><span class=cl>    port = 993
+</span></span><span class=line><span class=cl>    ssl = yes
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>service lmtp {
+</span></span><span class=line><span class=cl>    unix_listener /var/spool/postfix/private/dovecot-lmtp {
+</span></span><span class=line><span class=cl>    mode = 0600
+</span></span><span class=line><span class=cl>    user = postfix
+</span></span><span class=line><span class=cl>    group = postfix
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>service imap {
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>service auth {
+</span></span><span class=line><span class=cl>  unix_listener /var/spool/postfix/private/auth {
+</span></span><span class=line><span class=cl>    mode = 0666
+</span></span><span class=line><span class=cl>    user = postfix
+</span></span><span class=line><span class=cl>    group = postfix
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>  unix_listener auth-userdb {
+</span></span><span class=line><span class=cl>    mode = 0600
+</span></span><span class=line><span class=cl>    user = mail_sys
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>  user = dovecot
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>service auth-worker {
+</span></span><span class=line><span class=cl>  user = mail_sys
+</span></span><span class=line><span class=cl>}
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/dovecot.conf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>protocols = imap lmtp
+</span></span><span class=line><span class=cl>dict {
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>!include conf.d/*.conf
+</span></span><span class=line><span class=cl>!include_try local.conf
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span><span class=lnt>8
+</span><span class=lnt>9
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/10-mail.conf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>namespace inbox {
+</span></span><span class=line><span class=cl>  inbox = yes
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>first_valid_uid = 1000
+</span></span><span class=line><span class=cl>mbox_write_locks = fcntl
+</span></span><span class=line><span class=cl>mail_location = maildir:/var/spool/mail/%d/%n
+</span></span><span class=line><span class=cl>mail_privileged_group = mail
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span><span class=lnt>11
+</span><span class=lnt>12
+</span><span class=lnt>13
+</span><span class=lnt>14
+</span><span class=lnt>15
+</span><span class=lnt>16
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/15-mailboxes.conf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>namespace inbox {
+</span></span><span class=line><span class=cl>  mailbox Drafts {
+</span></span><span class=line><span class=cl>    auto = create
+</span></span><span class=line><span class=cl>    special_use = \Drafts
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>  mailbox Trash {
+</span></span><span class=line><span class=cl>    auto = create
+</span></span><span class=line><span class=cl>    special_use = \Trash
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>  mailbox Sent {
+</span></span><span class=line><span class=cl>    auto = create
+</span></span><span class=line><span class=cl>    special_use = \Sent
+</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl>}
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/10-auth.conf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>auth_mechanisms = plain login
+</span></span><span class=line><span class=cl>!include auth-sql.conf.ext
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
+</span><span class=lnt> 2
+</span><span class=lnt> 3
+</span><span class=lnt> 4
+</span><span class=lnt> 5
+</span><span class=lnt> 6
+</span><span class=lnt> 7
+</span><span class=lnt> 8
+</span><span class=lnt> 9
+</span><span class=lnt>10
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/auth-sql.conf.ext
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>passdb {
+</span></span><span class=line><span class=cl>  driver = sql
+</span></span><span class=line><span class=cl>  args = /etc/dovecot/dovecot-sql.conf.ext
+</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>userdb {
+</span></span><span class=line><span class=cl>  driver = static
+</span></span><span class=line><span class=cl>  args = uid=mail_sys gid=mail_sys home=/var/spool/mail/%d/%n
+</span></span><span class=line><span class=cl>}
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span><span class=lnt>5
+</span><span class=lnt>6
+</span><span class=lnt>7
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/10-ssl.conf 
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>ssl = required
+</span></span><span class=line><span class=cl>ssl_cert = &lt;/etc/letsencrypt/live/example.com/fullchain.pem
+</span></span><span class=line><span class=cl>ssl_key = &lt;/etc/letsencrypt/live/example.com/privkey.pem
+</span></span><span class=line><span class=cl>ssl_protocols = TLSv1.2 TLSv1.1 !TLSv1 !SSLv2 !SSLv3
+</span></span><span class=line><span class=cl>ssl_cipher_list = ALL:!MD5:!DES:!ADH:!RC4:!PSD:!SRP:!3DES:!eNULL:!aNULL
+</span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span><span class=lnt>4
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/15-lda.conf
+</span></span><span class=line><span class=cl>
+</span></span><span class=line><span class=cl>protocol lda {
+</span></span><span class=line><span class=cl>}
+</span></span></code></pre></td></tr></table></div></div><h4 id=dns解析>DNS解析</h4><table><thead><tr><th>hostname</th><th>TYPE</th><th>VALUE</th></tr></thead><tbody><tr><td>@</td><td>A</td><td>IP address</td></tr><tr><td>@</td><td>MX</td><td>example.com</td></tr><tr><td>@</td><td>TXT</td><td>v=spf1 mx -all</td></tr><tr><td>_dmarc</td><td>TXT</td><td>v=DMARC1; p=reject</td></tr><tr><td>mail._domainkey</td><td>TXT</td><td>密钥，见下文</td></tr></tbody></table><p>密钥文件</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-bash data-lang=bash><span class=line><span class=cl>cat /etc/opendkim/keys/mail.txt <span class=c1>#密钥即为第二个引号里的全部内容</span>
+</span></span></code></pre></td></tr></table></div></div><h4 id=检查邮箱状态>检查邮箱状态</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
+</span><span class=lnt>2
+</span><span class=lnt>3
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>yum install mailx
+</span></span><span class=line><span class=cl>mail email1@example.com
+</span></span><span class=line><span class=cl>tail /var/log/maillog
+</span></span></code></pre></td></tr></table></div></div></section><footer class="mt-12 flex flex-wrap"><a class="mb-1.5 mr-1.5 rounded-lg bg-black/[3%] px-5 py-1.5 no-underline dark:bg-white/[8%]" href=https://www.junz.org/tags/linux>Linux</a></footer><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/the_road_less_traveled/><span class=mr-1.5>←</span><span>少有人走的路力读书笔记</span></a>
+<a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/linux_users_management/><span>Linux用户管理</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
+<a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
+<a class=link href=https://github.com/nanxiaobei/hugo-paper rel=noopener target=_blank>✎ Paper</a></footer></body></html>
