@@ -1,5 +1,5 @@
-<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Linux下使用v2ray - Jun's Blog</title><meta name=theme-color><meta name=description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
-<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="Linux下使用v2ray"><meta itemprop=description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><meta itemprop=datePublished content="2021-02-28T16:06:32+08:00"><meta itemprop=dateModified content="2021-02-28T16:06:32+08:00"><meta itemprop=wordCount content="1434"><meta itemprop=keywords content="Linux,proxy,"><meta name=twitter:card content="summary"><meta name=twitter:title content="Linux下使用v2ray"><meta name=twitter:description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><link rel=canonical href=https://www.junz.org/post/v2_in_linux/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Linux下使用v2ray - Jun's Blog</title>
+<meta name=theme-color><meta name=description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script><link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.121.1"><meta itemprop=name content="Linux下使用v2ray"><meta itemprop=description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><meta itemprop=datePublished content="2021-02-28T16:06:32+08:00"><meta itemprop=dateModified content="2021-02-28T16:06:32+08:00"><meta itemprop=wordCount content="1434"><meta itemprop=keywords content="Linux,proxy,"><meta name=twitter:card content="summary"><meta name=twitter:title content="Linux下使用v2ray"><meta name=twitter:description content="v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端"><link rel=canonical href=https://www.junz.org/post/v2_in_linux/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
 <a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">Linux下使用v2ray</h1><div class="text-sm antialiased opacity-60"><time>Feb 28, 2021</time>
 <span class=mx-1>&#183;</span>
 <span>Jun</span></div></header><section><p>v2ray是一个强大的代理工具，但苦于Linux下一直没有一个好用的客户端，便萌生了直接使用裸v2ray的念头．v2ray本身是不区分服务端和客户端的，只要配置好相关文件，即可正常使用．</p><h2 id=安装v2ray>安装v2ray</h2><p>下载v2ray core</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
@@ -15,15 +15,15 @@
 </span><span class=lnt>7
 </span><span class=lnt>8
 </span><span class=lnt>9
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>v2ray -&gt; /usr/local/bin/v2ray
-</span></span><span class=line><span class=cl>v2ctl -&gt; /usr/local/bin/v2ctl
-</span></span><span class=line><span class=cl>geoip.dat -&gt; /usr/local/share/v2ray/geoip.dat
-</span></span><span class=line><span class=cl>geosite.dat -&gt; /usr/local/share/v2ray/geosite.dat
-</span></span><span class=line><span class=cl>config.json -&gt; /usr/local/etc/v2ray/config.json
-</span></span><span class=line><span class=cl>access.log -&gt; /var/log/v2ray/access.log
-</span></span><span class=line><span class=cl>error.log -&gt; /var/log/v2ray/error.log
-</span></span><span class=line><span class=cl>v2ray.service -&gt; /etc/systemd/system/v2ray.service
-</span></span><span class=line><span class=cl>v2ray@.service -&gt; /etc/systemd/system/v2ray@.service
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>v2ray</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=n>usr</span><span class=o>/</span><span class=n>local</span><span class=o>/</span><span class=n>bin</span><span class=o>/</span><span class=n>v2ray</span>
+</span></span><span class=line><span class=cl><span class=n>v2ctl</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=n>usr</span><span class=o>/</span><span class=n>local</span><span class=o>/</span><span class=n>bin</span><span class=o>/</span><span class=n>v2ctl</span>
+</span></span><span class=line><span class=cl><span class=n>geoip</span><span class=o>.</span><span class=n>dat</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=n>usr</span><span class=o>/</span><span class=n>local</span><span class=o>/</span><span class=n>share</span><span class=o>/</span><span class=n>v2ray</span><span class=o>/</span><span class=n>geoip</span><span class=o>.</span><span class=n>dat</span>
+</span></span><span class=line><span class=cl><span class=n>geosite</span><span class=o>.</span><span class=n>dat</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=n>usr</span><span class=o>/</span><span class=n>local</span><span class=o>/</span><span class=n>share</span><span class=o>/</span><span class=n>v2ray</span><span class=o>/</span><span class=n>geosite</span><span class=o>.</span><span class=n>dat</span>
+</span></span><span class=line><span class=cl><span class=n>config</span><span class=o>.</span><span class=n>json</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=n>usr</span><span class=o>/</span><span class=n>local</span><span class=o>/</span><span class=n>etc</span><span class=o>/</span><span class=n>v2ray</span><span class=o>/</span><span class=n>config</span><span class=o>.</span><span class=n>json</span>
+</span></span><span class=line><span class=cl><span class=n>access</span><span class=o>.</span><span class=n>log</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=k>var</span><span class=o>/</span><span class=nb>log</span><span class=o>/</span><span class=n>v2ray</span><span class=o>/</span><span class=n>access</span><span class=o>.</span><span class=n>log</span>
+</span></span><span class=line><span class=cl><span class=n>error</span><span class=o>.</span><span class=n>log</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=k>var</span><span class=o>/</span><span class=nb>log</span><span class=o>/</span><span class=n>v2ray</span><span class=o>/</span><span class=n>error</span><span class=o>.</span><span class=n>log</span>
+</span></span><span class=line><span class=cl><span class=n>v2ray</span><span class=o>.</span><span class=n>service</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=n>etc</span><span class=o>/</span><span class=n>systemd</span><span class=o>/</span><span class=n>system</span><span class=o>/</span><span class=n>v2ray</span><span class=o>.</span><span class=n>service</span>
+</span></span><span class=line><span class=cl><span class=n>v2ray</span><span class=err>@</span><span class=o>.</span><span class=n>service</span> <span class=o>-&gt;</span> <span class=o>/</span><span class=n>etc</span><span class=o>/</span><span class=n>systemd</span><span class=o>/</span><span class=n>system</span><span class=o>/</span><span class=n>v2ray</span><span class=err>@</span><span class=o>.</span><span class=n>service</span>
 </span></span></code></pre></td></tr></table></div></div><ul><li><p>日志文件要保证所有人都有读写权限</p></li><li><p>要在配置文件中指定日志路径</p></li></ul><h2 id=配置文件>配置文件</h2><p>注意原生的V2ray并不支持订阅。</p><p>以下配置文件仅为参考，你可以将其它客户端中的配置文件完全导出，然后直接替换<code>/usr/local/etc/v2ray/config.json</code></p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>  1
 </span><span class=lnt>  2
 </span><span class=lnt>  3
@@ -133,115 +133,115 @@
 </span><span class=lnt>107
 </span><span class=lnt>108
 </span><span class=lnt>109
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>{
-</span></span><span class=line><span class=cl>  &#34;dns&#34;: {
-</span></span><span class=line><span class=cl>    &#34;hosts&#34;: {
-</span></span><span class=line><span class=cl>      &#34;domain:googleapis.cn&#34;: &#34;googleapis.com&#34;
-</span></span><span class=line><span class=cl>    },
-</span></span><span class=line><span class=cl>    &#34;servers&#34;: [
-</span></span><span class=line><span class=cl>      &#34;1.1.1.1&#34;
-</span></span><span class=line><span class=cl>    ]
-</span></span><span class=line><span class=cl>  },
-</span></span><span class=line><span class=cl>  &#34;inbounds&#34;: [
-</span></span><span class=line><span class=cl>    {
-</span></span><span class=line><span class=cl>      &#34;listen&#34;: &#34;127.0.0.1&#34;,
-</span></span><span class=line><span class=cl>      &#34;port&#34;: 10808,
-</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;socks&#34;,
-</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
-</span></span><span class=line><span class=cl>        &#34;auth&#34;: &#34;noauth&#34;,
-</span></span><span class=line><span class=cl>        &#34;udp&#34;: true,
-</span></span><span class=line><span class=cl>        &#34;userLevel&#34;: 8
-</span></span><span class=line><span class=cl>      },
-</span></span><span class=line><span class=cl>      &#34;sniffing&#34;: {
-</span></span><span class=line><span class=cl>        &#34;destOverride&#34;: [
-</span></span><span class=line><span class=cl>          &#34;http&#34;,
-</span></span><span class=line><span class=cl>          &#34;tls&#34;
-</span></span><span class=line><span class=cl>        ],
-</span></span><span class=line><span class=cl>        &#34;enabled&#34;: true
-</span></span><span class=line><span class=cl>      },
-</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;socks&#34;
-</span></span><span class=line><span class=cl>    },
-</span></span><span class=line><span class=cl>    {
-</span></span><span class=line><span class=cl>      &#34;listen&#34;: &#34;127.0.0.1&#34;,
-</span></span><span class=line><span class=cl>      &#34;port&#34;: 10809,
-</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;http&#34;,
-</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
-</span></span><span class=line><span class=cl>        &#34;userLevel&#34;: 8
-</span></span><span class=line><span class=cl>      },
-</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;http&#34;
-</span></span><span class=line><span class=cl>    }
-</span></span><span class=line><span class=cl>  ],
-</span></span><span class=line><span class=cl>  &#34;log&#34;: {
-</span></span><span class=line><span class=cl>    &#34;loglevel&#34;: &#34;warning&#34;,
-</span></span><span class=line><span class=cl>    &#34;access&#34;:&#34;/var/log/v2ray/access.log&#34;,
-</span></span><span class=line><span class=cl>    &#34;error&#34;:&#34;/var/log/v2ray/error.log&#34;
-</span></span><span class=line><span class=cl>  },
-</span></span><span class=line><span class=cl>  &#34;outbounds&#34;: [
-</span></span><span class=line><span class=cl>    {
-</span></span><span class=line><span class=cl>    //此处根据具体设置
-</span></span><span class=line><span class=cl>      &#34;mux&#34;: {
-</span></span><span class=line><span class=cl>        &#34;concurrency&#34;: -1,
-</span></span><span class=line><span class=cl>        &#34;enabled&#34;: false
-</span></span><span class=line><span class=cl>      },
-</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;vmess&#34;,
-</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
-</span></span><span class=line><span class=cl>        &#34;vnext&#34;: [
-</span></span><span class=line><span class=cl>          {
-</span></span><span class=line><span class=cl>          //此处根据具体设置
-</span></span><span class=line><span class=cl>            &#34;address&#34;: &#34;example.com&#34;,
-</span></span><span class=line><span class=cl>            &#34;port&#34;: 10000,
-</span></span><span class=line><span class=cl>            &#34;users&#34;: [
-</span></span><span class=line><span class=cl>              {
-</span></span><span class=line><span class=cl>                &#34;alterId&#34;: 0,
-</span></span><span class=line><span class=cl>                &#34;id&#34;: &#34;xxxxxxxxxxxx&#34;,
-</span></span><span class=line><span class=cl>                &#34;level&#34;: 8,
-</span></span><span class=line><span class=cl>                &#34;security&#34;: &#34;auto&#34;
-</span></span><span class=line><span class=cl>              }
-</span></span><span class=line><span class=cl>            ]
-</span></span><span class=line><span class=cl>          }
-</span></span><span class=line><span class=cl>        ]
-</span></span><span class=line><span class=cl>      },
-</span></span><span class=line><span class=cl>      &#34;streamSettings&#34;: {
-</span></span><span class=line><span class=cl>        &#34;network&#34;: &#34;tcp&#34;,
-</span></span><span class=line><span class=cl>        &#34;security&#34;: &#34;&#34;
-</span></span><span class=line><span class=cl>      },
-</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;proxy&#34;
-</span></span><span class=line><span class=cl>    },
-</span></span><span class=line><span class=cl>    {
-</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;freedom&#34;,
-</span></span><span class=line><span class=cl>      &#34;settings&#34;: {},
-</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;direct&#34;
-</span></span><span class=line><span class=cl>    },
-</span></span><span class=line><span class=cl>    {
-</span></span><span class=line><span class=cl>      &#34;protocol&#34;: &#34;blackhole&#34;,
-</span></span><span class=line><span class=cl>      &#34;settings&#34;: {
-</span></span><span class=line><span class=cl>        &#34;response&#34;: {
-</span></span><span class=line><span class=cl>          &#34;type&#34;: &#34;http&#34;
-</span></span><span class=line><span class=cl>        }
-</span></span><span class=line><span class=cl>      },
-</span></span><span class=line><span class=cl>      &#34;tag&#34;: &#34;block&#34;
-</span></span><span class=line><span class=cl>    }
-</span></span><span class=line><span class=cl>  ],
-</span></span><span class=line><span class=cl>  &#34;policy&#34;: {
-</span></span><span class=line><span class=cl>    &#34;levels&#34;: {
-</span></span><span class=line><span class=cl>      &#34;8&#34;: {
-</span></span><span class=line><span class=cl>        &#34;connIdle&#34;: 300,
-</span></span><span class=line><span class=cl>        &#34;downlinkOnly&#34;: 1,
-</span></span><span class=line><span class=cl>        &#34;handshake&#34;: 4,
-</span></span><span class=line><span class=cl>        &#34;uplinkOnly&#34;: 1
-</span></span><span class=line><span class=cl>      }
-</span></span><span class=line><span class=cl>    },
-</span></span><span class=line><span class=cl>    &#34;system&#34;: {
-</span></span><span class=line><span class=cl>      &#34;statsOutboundUplink&#34;: true,
-</span></span><span class=line><span class=cl>      &#34;statsOutboundDownlink&#34;: true
-</span></span><span class=line><span class=cl>    }
-</span></span><span class=line><span class=cl>  },
-</span></span><span class=line><span class=cl>  &#34;routing&#34;: {
-</span></span><span class=line><span class=cl>    &#34;domainStrategy&#34;: &#34;IPIfNonMatch&#34;,
-</span></span><span class=line><span class=cl>    &#34;rules&#34;: []
-</span></span><span class=line><span class=cl>  },
-</span></span><span class=line><span class=cl>  &#34;stats&#34;: {}
-</span></span><span class=line><span class=cl>}
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=s2>&#34;dns&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;hosts&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;domain:googleapis.cn&#34;</span><span class=p>:</span> <span class=s2>&#34;googleapis.com&#34;</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;servers&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;1.1.1.1&#34;</span>
+</span></span><span class=line><span class=cl>    <span class=p>]</span>
+</span></span><span class=line><span class=cl>  <span class=p>},</span>
+</span></span><span class=line><span class=cl>  <span class=s2>&#34;inbounds&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;listen&#34;</span><span class=p>:</span> <span class=s2>&#34;127.0.0.1&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;port&#34;</span><span class=p>:</span> <span class=mi>10808</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;protocol&#34;</span><span class=p>:</span> <span class=s2>&#34;socks&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;settings&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;auth&#34;</span><span class=p>:</span> <span class=s2>&#34;noauth&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;udp&#34;</span><span class=p>:</span> <span class=bp>true</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;userLevel&#34;</span><span class=p>:</span> <span class=mi>8</span>
+</span></span><span class=line><span class=cl>      <span class=p>},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;sniffing&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;destOverride&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>          <span class=s2>&#34;http&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>          <span class=s2>&#34;tls&#34;</span>
+</span></span><span class=line><span class=cl>        <span class=p>],</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;enabled&#34;</span><span class=p>:</span> <span class=bp>true</span>
+</span></span><span class=line><span class=cl>      <span class=p>},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;tag&#34;</span><span class=p>:</span> <span class=s2>&#34;socks&#34;</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;listen&#34;</span><span class=p>:</span> <span class=s2>&#34;127.0.0.1&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;port&#34;</span><span class=p>:</span> <span class=mi>10809</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;protocol&#34;</span><span class=p>:</span> <span class=s2>&#34;http&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;settings&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;userLevel&#34;</span><span class=p>:</span> <span class=mi>8</span>
+</span></span><span class=line><span class=cl>      <span class=p>},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;tag&#34;</span><span class=p>:</span> <span class=s2>&#34;http&#34;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>],</span>
+</span></span><span class=line><span class=cl>  <span class=s2>&#34;log&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;loglevel&#34;</span><span class=p>:</span> <span class=s2>&#34;warning&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;access&#34;</span><span class=p>:</span><span class=s2>&#34;/var/log/v2ray/access.log&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;error&#34;</span><span class=p>:</span><span class=s2>&#34;/var/log/v2ray/error.log&#34;</span>
+</span></span><span class=line><span class=cl>  <span class=p>},</span>
+</span></span><span class=line><span class=cl>  <span class=s2>&#34;outbounds&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=o>//</span><span class=err>此处根据具体设置</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;mux&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;concurrency&#34;</span><span class=p>:</span> <span class=o>-</span><span class=mi>1</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;enabled&#34;</span><span class=p>:</span> <span class=bp>false</span>
+</span></span><span class=line><span class=cl>      <span class=p>},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;protocol&#34;</span><span class=p>:</span> <span class=s2>&#34;vmess&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;settings&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;vnext&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>          <span class=p>{</span>
+</span></span><span class=line><span class=cl>          <span class=o>//</span><span class=err>此处根据具体设置</span>
+</span></span><span class=line><span class=cl>            <span class=s2>&#34;address&#34;</span><span class=p>:</span> <span class=s2>&#34;example.com&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>            <span class=s2>&#34;port&#34;</span><span class=p>:</span> <span class=mi>10000</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>            <span class=s2>&#34;users&#34;</span><span class=p>:</span> <span class=p>[</span>
+</span></span><span class=line><span class=cl>              <span class=p>{</span>
+</span></span><span class=line><span class=cl>                <span class=s2>&#34;alterId&#34;</span><span class=p>:</span> <span class=mi>0</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                <span class=s2>&#34;id&#34;</span><span class=p>:</span> <span class=s2>&#34;xxxxxxxxxxxx&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                <span class=s2>&#34;level&#34;</span><span class=p>:</span> <span class=mi>8</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>                <span class=s2>&#34;security&#34;</span><span class=p>:</span> <span class=s2>&#34;auto&#34;</span>
+</span></span><span class=line><span class=cl>              <span class=p>}</span>
+</span></span><span class=line><span class=cl>            <span class=p>]</span>
+</span></span><span class=line><span class=cl>          <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=p>]</span>
+</span></span><span class=line><span class=cl>      <span class=p>},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;streamSettings&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;network&#34;</span><span class=p>:</span> <span class=s2>&#34;tcp&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;security&#34;</span><span class=p>:</span> <span class=s2>&#34;&#34;</span>
+</span></span><span class=line><span class=cl>      <span class=p>},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;tag&#34;</span><span class=p>:</span> <span class=s2>&#34;proxy&#34;</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;protocol&#34;</span><span class=p>:</span> <span class=s2>&#34;freedom&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;settings&#34;</span><span class=p>:</span> <span class=p>{},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;tag&#34;</span><span class=p>:</span> <span class=s2>&#34;direct&#34;</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;protocol&#34;</span><span class=p>:</span> <span class=s2>&#34;blackhole&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;settings&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;response&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>          <span class=s2>&#34;type&#34;</span><span class=p>:</span> <span class=s2>&#34;http&#34;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>      <span class=p>},</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;tag&#34;</span><span class=p>:</span> <span class=s2>&#34;block&#34;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>],</span>
+</span></span><span class=line><span class=cl>  <span class=s2>&#34;policy&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;levels&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;8&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;connIdle&#34;</span><span class=p>:</span> <span class=mi>300</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;downlinkOnly&#34;</span><span class=p>:</span> <span class=mi>1</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;handshake&#34;</span><span class=p>:</span> <span class=mi>4</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>        <span class=s2>&#34;uplinkOnly&#34;</span><span class=p>:</span> <span class=mi>1</span>
+</span></span><span class=line><span class=cl>      <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=p>},</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;system&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;statsOutboundUplink&#34;</span><span class=p>:</span> <span class=bp>true</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>      <span class=s2>&#34;statsOutboundDownlink&#34;</span><span class=p>:</span> <span class=bp>true</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=p>},</span>
+</span></span><span class=line><span class=cl>  <span class=s2>&#34;routing&#34;</span><span class=p>:</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;domainStrategy&#34;</span><span class=p>:</span> <span class=s2>&#34;IPIfNonMatch&#34;</span><span class=p>,</span>
+</span></span><span class=line><span class=cl>    <span class=s2>&#34;rules&#34;</span><span class=p>:</span> <span class=p>[]</span>
+</span></span><span class=line><span class=cl>  <span class=p>},</span>
+</span></span><span class=line><span class=cl>  <span class=s2>&#34;stats&#34;</span><span class=p>:</span> <span class=p>{}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span></code></pre></td></tr></table></div></div><h2 id=使用v2ray>使用V2ray</h2><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
 </span><span class=lnt>2
 </span><span class=lnt>3
@@ -265,9 +265,9 @@
 如果不确定，就直接写入<code>~/.bashrc</code></p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
 </span><span class=lnt>2
 </span><span class=lnt>3
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>//端口具体情况具体对待，不清楚打开代理工具看一下．
-</span></span><span class=line><span class=cl>export ALL_PROXY=&#34;socks5://127.0.0.1:10808&#34;
-</span></span><span class=line><span class=cl>export http_proxy=&#34;http://127.0.0.1:10809&#34;
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=o>//</span><span class=err>端口具体情况具体对待，不清楚打开代理工具看一下．</span>
+</span></span><span class=line><span class=cl><span class=k>export</span> <span class=n>ALL_PROXY</span><span class=o>=</span><span class=s2>&#34;socks5://127.0.0.1:10808&#34;</span>
+</span></span><span class=line><span class=cl><span class=k>export</span> <span class=n>http_proxy</span><span class=o>=</span><span class=s2>&#34;http://127.0.0.1:10809&#34;</span>
 </span></span></code></pre></td></tr></table></div></div><p>然后我们要让配置文件生效．</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
 </span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>source ~/.bashrc
 </span></span></code></pre></td></tr></table></div></div><p>如果还是无法走代理可以试试重开一个终端．</p><h3 id=使用proxychains>使用proxychains</h3><p>对于某些不会走<code>socks5</code>的应用，我们还可以通过<a href=https://github.com/haad/proxychains>proxychains</a>，使它强制走代理</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1

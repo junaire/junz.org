@@ -1,5 +1,5 @@
-<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Postfix & Dovecot 自建邮箱服务 - Jun's Blog</title><meta name=theme-color><meta name=description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
-<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="Postfix & Dovecot 自建邮箱服务"><meta itemprop=description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><meta itemprop=datePublished content="2021-02-28T15:38:40+08:00"><meta itemprop=dateModified content="2021-02-28T15:38:40+08:00"><meta itemprop=wordCount content="1956"><meta itemprop=keywords content="Linux,"><meta name=twitter:card content="summary"><meta name=twitter:title content="Postfix & Dovecot 自建邮箱服务"><meta name=twitter:description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><link rel=canonical href=https://www.junz.org/post/mail_server/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>Postfix & Dovecot 自建邮箱服务 - Jun's Blog</title>
+<meta name=theme-color><meta name=description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script><link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.121.1"><meta itemprop=name content="Postfix & Dovecot 自建邮箱服务"><meta itemprop=description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><meta itemprop=datePublished content="2021-02-28T15:38:40+08:00"><meta itemprop=dateModified content="2021-02-28T15:38:40+08:00"><meta itemprop=wordCount content="1956"><meta itemprop=keywords content="Linux,"><meta name=twitter:card content="summary"><meta name=twitter:title content="Postfix & Dovecot 自建邮箱服务"><meta name=twitter:description content="本文中example.com hostname password请修改为自己的配置 环境 系统CentOS 7 postfix dovecot mariadb opendkim nginx 安装必备软件 1 2 3 4 yum -y update && \ yum -y install epel-release && \ yum"><link rel=canonical href=https://www.junz.org/post/mail_server/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
 <a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">Postfix & Dovecot 自建邮箱服务</h1><div class="text-sm antialiased opacity-60"><time>Feb 28, 2021</time>
 <span class=mx-1>&#183;</span>
 <span>Jun</span></div></header><section><p><strong>本文中example.com hostname password请修改为自己的配置</strong></p><h4 id=环境>环境</h4><ul><li><p>系统CentOS 7</p></li><li><p>postfix</p></li><li><p>dovecot</p></li><li><p>mariadb</p></li><li><p>opendkim</p></li><li><p>nginx</p></li></ul><h4 id=安装必备软件>安装必备软件</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
@@ -568,48 +568,48 @@
 </span><span class=lnt>40
 </span><span class=lnt>41
 </span><span class=lnt>42
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/10-master.conf
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=o>/</span><span class=n>etc</span><span class=o>/</span><span class=n>dovecot</span><span class=o>/</span><span class=n>conf</span><span class=o>.</span><span class=n>d</span><span class=o>/</span><span class=mi>10</span><span class=o>-</span><span class=n>master</span><span class=o>.</span><span class=n>conf</span>
 </span></span><span class=line><span class=cl>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>service imap-login {
-</span></span><span class=line><span class=cl>  inet_listener imap {
-</span></span><span class=line><span class=cl>    port = 143
-</span></span><span class=line><span class=cl>  }
-</span></span><span class=line><span class=cl>  inet_listener imaps {
-</span></span><span class=line><span class=cl>    port = 993
-</span></span><span class=line><span class=cl>    ssl = yes
-</span></span><span class=line><span class=cl>  }
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl><span class=n>service</span> <span class=n>imap</span><span class=o>-</span><span class=n>login</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>inet_listener</span> <span class=n>imap</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>port</span> <span class=o>=</span> <span class=mi>143</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=n>inet_listener</span> <span class=n>imaps</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>port</span> <span class=o>=</span> <span class=mi>993</span>
+</span></span><span class=line><span class=cl>    <span class=n>ssl</span> <span class=o>=</span> <span class=n>yes</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>service lmtp {
-</span></span><span class=line><span class=cl>    unix_listener /var/spool/postfix/private/dovecot-lmtp {
-</span></span><span class=line><span class=cl>    mode = 0600
-</span></span><span class=line><span class=cl>    user = postfix
-</span></span><span class=line><span class=cl>    group = postfix
-</span></span><span class=line><span class=cl>  }
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl><span class=n>service</span> <span class=n>lmtp</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>unix_listener</span> <span class=o>/</span><span class=k>var</span><span class=o>/</span><span class=n>spool</span><span class=o>/</span><span class=n>postfix</span><span class=o>/</span><span class=n>private</span><span class=o>/</span><span class=n>dovecot</span><span class=o>-</span><span class=n>lmtp</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>mode</span> <span class=o>=</span> <span class=mi>0600</span>
+</span></span><span class=line><span class=cl>    <span class=n>user</span> <span class=o>=</span> <span class=n>postfix</span>
+</span></span><span class=line><span class=cl>    <span class=n>group</span> <span class=o>=</span> <span class=n>postfix</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>service imap {
+</span></span><span class=line><span class=cl><span class=n>service</span> <span class=n>imap</span> <span class=p>{</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>service auth {
-</span></span><span class=line><span class=cl>  unix_listener /var/spool/postfix/private/auth {
-</span></span><span class=line><span class=cl>    mode = 0666
-</span></span><span class=line><span class=cl>    user = postfix
-</span></span><span class=line><span class=cl>    group = postfix
-</span></span><span class=line><span class=cl>  }
+</span></span><span class=line><span class=cl><span class=n>service</span> <span class=n>auth</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>unix_listener</span> <span class=o>/</span><span class=k>var</span><span class=o>/</span><span class=n>spool</span><span class=o>/</span><span class=n>postfix</span><span class=o>/</span><span class=n>private</span><span class=o>/</span><span class=n>auth</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>mode</span> <span class=o>=</span> <span class=mi>0666</span>
+</span></span><span class=line><span class=cl>    <span class=n>user</span> <span class=o>=</span> <span class=n>postfix</span>
+</span></span><span class=line><span class=cl>    <span class=n>group</span> <span class=o>=</span> <span class=n>postfix</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>  unix_listener auth-userdb {
-</span></span><span class=line><span class=cl>    mode = 0600
-</span></span><span class=line><span class=cl>    user = mail_sys
-</span></span><span class=line><span class=cl>  }
-</span></span><span class=line><span class=cl>  user = dovecot
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>  <span class=n>unix_listener</span> <span class=n>auth</span><span class=o>-</span><span class=n>userdb</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>mode</span> <span class=o>=</span> <span class=mi>0600</span>
+</span></span><span class=line><span class=cl>    <span class=n>user</span> <span class=o>=</span> <span class=n>mail_sys</span>
+</span></span><span class=line><span class=cl>  <span class=p>}</span>
+</span></span><span class=line><span class=cl>  <span class=n>user</span> <span class=o>=</span> <span class=n>dovecot</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>service auth-worker {
-</span></span><span class=line><span class=cl>  user = mail_sys
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl><span class=n>service</span> <span class=n>auth</span><span class=o>-</span><span class=n>worker</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>user</span> <span class=o>=</span> <span class=n>mail_sys</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
 </span><span class=lnt>2
 </span><span class=lnt>3
@@ -633,15 +633,15 @@
 </span><span class=lnt>7
 </span><span class=lnt>8
 </span><span class=lnt>9
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/10-mail.conf
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=o>/</span><span class=n>etc</span><span class=o>/</span><span class=n>dovecot</span><span class=o>/</span><span class=n>conf</span><span class=o>.</span><span class=n>d</span><span class=o>/</span><span class=mi>10</span><span class=o>-</span><span class=n>mail</span><span class=o>.</span><span class=n>conf</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>namespace inbox {
-</span></span><span class=line><span class=cl>  inbox = yes
-</span></span><span class=line><span class=cl>}
-</span></span><span class=line><span class=cl>first_valid_uid = 1000
-</span></span><span class=line><span class=cl>mbox_write_locks = fcntl
-</span></span><span class=line><span class=cl>mail_location = maildir:/var/spool/mail/%d/%n
-</span></span><span class=line><span class=cl>mail_privileged_group = mail
+</span></span><span class=line><span class=cl><span class=n>namespace</span> <span class=n>inbox</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>inbox</span> <span class=o>=</span> <span class=n>yes</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=n>first_valid_uid</span> <span class=o>=</span> <span class=mi>1000</span>
+</span></span><span class=line><span class=cl><span class=n>mbox_write_locks</span> <span class=o>=</span> <span class=n>fcntl</span>
+</span></span><span class=line><span class=cl><span class=n>mail_location</span> <span class=o>=</span> <span class=n>maildir</span><span class=p>:</span><span class=o>/</span><span class=k>var</span><span class=o>/</span><span class=n>spool</span><span class=o>/</span><span class=n>mail</span><span class=o>/%</span><span class=n>d</span><span class=o>/%</span><span class=n>n</span>
+</span></span><span class=line><span class=cl><span class=n>mail_privileged_group</span> <span class=o>=</span> <span class=n>mail</span>
 </span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
 </span><span class=lnt> 2
 </span><span class=lnt> 3
@@ -692,16 +692,16 @@
 </span><span class=lnt> 8
 </span><span class=lnt> 9
 </span><span class=lnt>10
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>/etc/dovecot/conf.d/auth-sql.conf.ext
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=o>/</span><span class=n>etc</span><span class=o>/</span><span class=n>dovecot</span><span class=o>/</span><span class=n>conf</span><span class=o>.</span><span class=n>d</span><span class=o>/</span><span class=n>auth</span><span class=o>-</span><span class=n>sql</span><span class=o>.</span><span class=n>conf</span><span class=o>.</span><span class=n>ext</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>passdb {
-</span></span><span class=line><span class=cl>  driver = sql
-</span></span><span class=line><span class=cl>  args = /etc/dovecot/dovecot-sql.conf.ext
-</span></span><span class=line><span class=cl>}
-</span></span><span class=line><span class=cl>userdb {
-</span></span><span class=line><span class=cl>  driver = static
-</span></span><span class=line><span class=cl>  args = uid=mail_sys gid=mail_sys home=/var/spool/mail/%d/%n
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl><span class=n>passdb</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>driver</span> <span class=o>=</span> <span class=n>sql</span>
+</span></span><span class=line><span class=cl>  <span class=n>args</span> <span class=o>=</span> <span class=o>/</span><span class=n>etc</span><span class=o>/</span><span class=n>dovecot</span><span class=o>/</span><span class=n>dovecot</span><span class=o>-</span><span class=n>sql</span><span class=o>.</span><span class=n>conf</span><span class=o>.</span><span class=n>ext</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
+</span></span><span class=line><span class=cl><span class=n>userdb</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>  <span class=n>driver</span> <span class=o>=</span> <span class=k>static</span>
+</span></span><span class=line><span class=cl>  <span class=n>args</span> <span class=o>=</span> <span class=n>uid</span><span class=o>=</span><span class=n>mail_sys</span> <span class=n>gid</span><span class=o>=</span><span class=n>mail_sys</span> <span class=n>home</span><span class=o>=/</span><span class=k>var</span><span class=o>/</span><span class=n>spool</span><span class=o>/</span><span class=n>mail</span><span class=o>/%</span><span class=n>d</span><span class=o>/%</span><span class=n>n</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span></code></pre></td></tr></table></div></div><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
 </span><span class=lnt>2
 </span><span class=lnt>3
@@ -729,9 +729,9 @@
 </span></span></code></pre></td></tr></table></div></div><h4 id=检查邮箱状态>检查邮箱状态</h4><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
 </span><span class=lnt>2
 </span><span class=lnt>3
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>yum install mailx
-</span></span><span class=line><span class=cl>mail email1@example.com
-</span></span><span class=line><span class=cl>tail /var/log/maillog
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>yum</span> <span class=n>install</span> <span class=n>mailx</span>
+</span></span><span class=line><span class=cl><span class=n>mail</span> <span class=n>email1</span><span class=err>@</span><span class=n>example</span><span class=o>.</span><span class=n>com</span>
+</span></span><span class=line><span class=cl><span class=n>tail</span> <span class=o>/</span><span class=k>var</span><span class=o>/</span><span class=nb>log</span><span class=o>/</span><span class=n>maillog</span>
 </span></span></code></pre></td></tr></table></div></div></section><footer class="mt-12 flex flex-wrap"><a class="mb-1.5 mr-1.5 rounded-lg bg-black/[3%] px-5 py-1.5 no-underline dark:bg-white/[8%]" href=https://www.junz.org/tags/linux>Linux</a></footer><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/the_road_less_traveled/><span class=mr-1.5>←</span><span>少有人走的路力读书笔记</span></a>
 <a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/linux_users_management/><span>Linux用户管理</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
 <a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️

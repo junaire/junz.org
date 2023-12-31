@@ -1,5 +1,5 @@
-<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=x-ua-compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>由Redis学习数据结构--字典 - Jun's Blog</title><meta name=theme-color><meta name=description content="字典的定义 字典，是一种保存键值对（key value pair）的抽象数据结构。 字典中的每一个键都是独一无二的，我们可以通过键查找，更新，删除与之关联的"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script>
-<link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.119.0"><meta itemprop=name content="由Redis学习数据结构--字典"><meta itemprop=description content="字典的定义 字典，是一种保存键值对（key value pair）的抽象数据结构。 字典中的每一个键都是独一无二的，我们可以通过键查找，更新，删除与之关联的"><meta itemprop=datePublished content="2021-05-08T21:21:22+08:00"><meta itemprop=dateModified content="2021-05-08T21:21:22+08:00"><meta itemprop=wordCount content="1958"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="由Redis学习数据结构--字典"><meta name=twitter:description content="字典的定义 字典，是一种保存键值对（key value pair）的抽象数据结构。 字典中的每一个键都是独一无二的，我们可以通过键查找，更新，删除与之关联的"><link rel=canonical href=https://www.junz.org/post/dict_in_redis/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
+<!doctype html><html class="not-ready lg:text-base" style=--bg:#faf8f1 lang=en><head><meta charset=utf-8><meta http-equiv=X-UA-Compatible content="IE=edge"><meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no"><title>由Redis学习数据结构--字典 - Jun's Blog</title>
+<meta name=theme-color><meta name=description content="字典的定义 字典，是一种保存键值对（key value pair）的抽象数据结构。 字典中的每一个键都是独一无二的，我们可以通过键查找，更新，删除与之关联的"><meta name=author content="Jun"><link rel="preload stylesheet" as=style href=https://www.junz.org/main.min.css><link rel=preload as=image href=https://www.junz.org/theme.png><script defer src=https://www.junz.org/highlight.min.js onload=hljs.initHighlightingOnLoad()></script><link rel=icon href=https://www.junz.org/favicon.ico><link rel=apple-touch-icon href=https://www.junz.org/apple-touch-icon.png><meta name=generator content="Hugo 0.121.1"><meta itemprop=name content="由Redis学习数据结构--字典"><meta itemprop=description content="字典的定义 字典，是一种保存键值对（key value pair）的抽象数据结构。 字典中的每一个键都是独一无二的，我们可以通过键查找，更新，删除与之关联的"><meta itemprop=datePublished content="2021-05-08T21:21:22+08:00"><meta itemprop=dateModified content="2021-05-08T21:21:22+08:00"><meta itemprop=wordCount content="1958"><meta itemprop=keywords content><meta name=twitter:card content="summary"><meta name=twitter:title content="由Redis学习数据结构--字典"><meta name=twitter:description content="字典的定义 字典，是一种保存键值对（key value pair）的抽象数据结构。 字典中的每一个键都是独一无二的，我们可以通过键查找，更新，删除与之关联的"><link rel=canonical href=https://www.junz.org/post/dict_in_redis/></head><body class="text-black duration-200 ease-out dark:text-white"><header class="mx-auto flex h-[4.5rem] max-w-3xl px-8 lg:justify-center"><div class="relative z-50 mr-auto flex items-center"><a class="-translate-x-[1px] -translate-y-[1px] text-2xl font-semibold" href=https://www.junz.org>Jun's Blog</a><div class="btn-dark text-[0] ml-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]" role=button aria-label=Dark></div></div><div class="btn-menu relative z-50 -mr-8 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden" role=button aria-label=Menu></div><script>const htmlClass=document.documentElement.classList;setTimeout(()=>{htmlClass.remove("not-ready")},10);const btnMenu=document.querySelector(".btn-menu");btnMenu.addEventListener("click",()=>{htmlClass.toggle("open")});const metaTheme=document.querySelector('meta[name="theme-color"]'),lightBg="#faf8f1".replace(/"/g,""),setDark=e=>{metaTheme.setAttribute("content",e?"#000":lightBg),htmlClass[e?"add":"remove"]("dark"),localStorage.setItem("dark",e)},darkScheme=window.matchMedia("(prefers-color-scheme: dark)");if(htmlClass.contains("dark"))setDark(!0);else{const e=localStorage.getItem("dark");setDark(e?e==="true":darkScheme.matches)}darkScheme.addEventListener("change",e=>{setDark(e.matches)});const btnDark=document.querySelector(".btn-dark");btnDark.addEventListener("click",()=>{setDark(localStorage.getItem("dark")!=="true")})</script><div class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full select-none flex-col justify-center pb-16 duration-200 dark:bg-black lg:static lg:h-auto lg:flex-row lg:!bg-transparent lg:pb-0 lg:transition-none"><nav class="lg:ml-12 lg:flex lg:flex-row lg:items-center lg:space-x-6"><a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/>Home</a>
 <a class="block text-center text-2xl leading-[5rem] lg:text-base lg:font-normal" href=/about/>About</a></nav></div></header><main class="prose prose-neutral relative mx-auto min-h-[calc(100%-9rem)] max-w-3xl px-8 pb-16 pt-12 dark:prose-invert"><article><header class=mb-16><h1 class="!my-0 pb-2.5">由Redis学习数据结构--字典</h1><div class="text-sm antialiased opacity-60"><time>May 8, 2021</time>
 <span class=mx-1>&#183;</span>
 <span>Jun</span></div></header><section><h2 id=字典的定义>字典的定义</h2><p>字典，是一种保存键值对（key value pair）的抽象数据结构。</p><p>字典中的每一个键都是独一无二的，我们可以通过键查找，更新，删除与之关联的值。</p><p>Redis中用C语言实现了字典，其本质即为<a href=https://en.wikipedia.org/wiki/Hash_table>哈希表（Hash table）</a>的一层wrapper。</p><h3 id=哈希表>哈希表</h3><p>Redis中的字典具有很高的查询速度，这主要得益于其基于哈希表的底层实现。</p><p>在字典中，假如其键为<code>key</code>，它的值(value)储则存在<code>f(key)</code>上，故我们可以很快地通过<code>f()</code>找到需要操作的值，而不需要遍历。</p><p>其中<code>f()</code>函数为散列函数，其本身很大程度上决定着字典的效率，我们将在下文简单介绍Redis所使用的散列函数。</p><h4 id=哈希冲突>哈希冲突</h4><p>在某些时候，不同的键会产生相同的值，我们称为哈希冲突。此时我们就需要对冲突进行解决。</p><p>在Redis中，我们使用了链地址法（separatechaining）来解决键冲突。具体为每个哈希表节点都有一个next指针，多个节点以此形成一个单向链表，以解决键冲突的问题。</p><h4 id=载荷因子>载荷因子</h4><p>散列表的载荷因子定义为：</p><p><strong>α = 填入表中的元素个数 / 散列表的长度</strong></p><p>α 是散列表装满程度的标志因子。由于表长是定值， α与“填入表中的元素个数”成正比，所以，α越大，表明填入表中的元素越多，产生冲突的可能性就越大；反之，α越小，标明填入表中的元素越少，产生冲突的可能性就越小。实际上，散列表的平均查找长度是载荷因子 α的函数，只是不同处理冲突的方法有不同的函数。</p><p>载荷因子一定程度上决定着哈希表的效率。为了使Redis的负载因子维持在一个合理的范围，当哈希表中保存的键值对过多或过少时，我们就会对哈希表进行相应的扩展或收缩。这个过程称为rehashing。</p><h2 id=相关结构>相关结构</h2><h3 id=字典>字典</h3><p>其中<code>ht</code>为哈希表数组，第一个用来储存数据，第二个用来<code>rehashing</code></p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
@@ -25,15 +25,15 @@
 </span><span class=lnt>7
 </span><span class=lnt>8
 </span><span class=lnt>9
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>typedef struct dictType {
-</span></span><span class=line><span class=cl>    uint64_t (*hashFunction)(const void *key);
-</span></span><span class=line><span class=cl>    void *(*keyDup)(void *privdata, const void *key);
-</span></span><span class=line><span class=cl>    void *(*valDup)(void *privdata, const void *obj);
-</span></span><span class=line><span class=cl>    int (*keyCompare)(void *privdata, const void *key1, const void *key2);
-</span></span><span class=line><span class=cl>    void (*keyDestructor)(void *privdata, void *key);
-</span></span><span class=line><span class=cl>    void (*valDestructor)(void *privdata, void *obj);
-</span></span><span class=line><span class=cl>    int (*expandAllowed)(size_t moreMem, double usedRatio);
-</span></span><span class=line><span class=cl>} dictType;
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>typedef</span> <span class=n>struct</span> <span class=n>dictType</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>uint64_t</span> <span class=p>(</span><span class=o>*</span><span class=n>hashFunction</span><span class=p>)(</span><span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>void</span> <span class=o>*</span><span class=p>(</span><span class=o>*</span><span class=n>keyDup</span><span class=p>)(</span><span class=n>void</span> <span class=o>*</span><span class=n>privdata</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>void</span> <span class=o>*</span><span class=p>(</span><span class=o>*</span><span class=n>valDup</span><span class=p>)(</span><span class=n>void</span> <span class=o>*</span><span class=n>privdata</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>obj</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=ne>int</span> <span class=p>(</span><span class=o>*</span><span class=n>keyCompare</span><span class=p>)(</span><span class=n>void</span> <span class=o>*</span><span class=n>privdata</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key1</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key2</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>void</span> <span class=p>(</span><span class=o>*</span><span class=n>keyDestructor</span><span class=p>)(</span><span class=n>void</span> <span class=o>*</span><span class=n>privdata</span><span class=p>,</span> <span class=n>void</span> <span class=o>*</span><span class=n>key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>void</span> <span class=p>(</span><span class=o>*</span><span class=n>valDestructor</span><span class=p>)(</span><span class=n>void</span> <span class=o>*</span><span class=n>privdata</span><span class=p>,</span> <span class=n>void</span> <span class=o>*</span><span class=n>obj</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=ne>int</span> <span class=p>(</span><span class=o>*</span><span class=n>expandAllowed</span><span class=p>)(</span><span class=n>size_t</span> <span class=n>moreMem</span><span class=p>,</span> <span class=n>double</span> <span class=n>usedRatio</span><span class=p>);</span>
+</span></span><span class=line><span class=cl><span class=p>}</span> <span class=n>dictType</span><span class=p>;</span>
 </span></span></code></pre></td></tr></table></div></div><h3 id=哈希表-1>哈希表</h3><p>其中<code>table</code>是一个数组，保存着键值对的指针。</p><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt>1
 </span><span class=lnt>2
 </span><span class=lnt>3
@@ -258,46 +258,46 @@
 </span><span class=lnt>38
 </span><span class=lnt>39
 </span><span class=lnt>40
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>int dictDelete(dict *ht, const void *key) {
-</span></span><span class=line><span class=cl>    return dictGenericDelete(ht,key,0) ? DICT_OK : DICT_ERR;
-</span></span><span class=line><span class=cl>}
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=ne>int</span> <span class=n>dictDelete</span><span class=p>(</span><span class=n>dict</span> <span class=o>*</span><span class=n>ht</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>dictGenericDelete</span><span class=p>(</span><span class=n>ht</span><span class=p>,</span><span class=n>key</span><span class=p>,</span><span class=mi>0</span><span class=p>)</span> <span class=err>?</span> <span class=n>DICT_OK</span> <span class=p>:</span> <span class=n>DICT_ERR</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>static dictEntry *dictGenericDelete(dict *d, const void *key, int nofree) {
-</span></span><span class=line><span class=cl>    uint64_t h, idx;
-</span></span><span class=line><span class=cl>    dictEntry *he, *prevHe;
-</span></span><span class=line><span class=cl>    int table;
+</span></span><span class=line><span class=cl><span class=k>static</span> <span class=n>dictEntry</span> <span class=o>*</span><span class=n>dictGenericDelete</span><span class=p>(</span><span class=n>dict</span> <span class=o>*</span><span class=n>d</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key</span><span class=p>,</span> <span class=ne>int</span> <span class=n>nofree</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>uint64_t</span> <span class=n>h</span><span class=p>,</span> <span class=n>idx</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>dictEntry</span> <span class=o>*</span><span class=n>he</span><span class=p>,</span> <span class=o>*</span><span class=n>prevHe</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=ne>int</span> <span class=n>table</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    if (d-&gt;ht[0].used == 0 &amp;&amp; d-&gt;ht[1].used == 0) return NULL;
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=mi>0</span><span class=p>]</span><span class=o>.</span><span class=n>used</span> <span class=o>==</span> <span class=mi>0</span> <span class=o>&amp;&amp;</span> <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=mi>1</span><span class=p>]</span><span class=o>.</span><span class=n>used</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=k>return</span> <span class=n>NULL</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    if (dictIsRehashing(d)) _dictRehashStep(d);
-</span></span><span class=line><span class=cl>    h = dictHashKey(d, key);
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>dictIsRehashing</span><span class=p>(</span><span class=n>d</span><span class=p>))</span> <span class=n>_dictRehashStep</span><span class=p>(</span><span class=n>d</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>h</span> <span class=o>=</span> <span class=n>dictHashKey</span><span class=p>(</span><span class=n>d</span><span class=p>,</span> <span class=n>key</span><span class=p>);</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    for (table = 0; table &lt;= 1; table++) {
-</span></span><span class=line><span class=cl>        idx = h &amp; d-&gt;ht[table].sizemask; //位与运算，找到索引。
-</span></span><span class=line><span class=cl>        he = d-&gt;ht[table].table[idx]; //找到键值对
-</span></span><span class=line><span class=cl>        prevHe = NULL;
-</span></span><span class=line><span class=cl>        while(he) {
-</span></span><span class=line><span class=cl>            if (key==he-&gt;key || dictCompareKeys(d, key, he-&gt;key)) {
-</span></span><span class=line><span class=cl>                /* Unlink the element from the list */
-</span></span><span class=line><span class=cl>                if (prevHe)
-</span></span><span class=line><span class=cl>                    prevHe-&gt;next = he-&gt;next;
-</span></span><span class=line><span class=cl>                else
-</span></span><span class=line><span class=cl>                    d-&gt;ht[table].table[idx] = he-&gt;next;
-</span></span><span class=line><span class=cl>                if (!nofree) {
-</span></span><span class=line><span class=cl>                    dictFreeKey(d, he);
-</span></span><span class=line><span class=cl>                    dictFreeVal(d, he);
-</span></span><span class=line><span class=cl>                    zfree(he);
-</span></span><span class=line><span class=cl>                }
-</span></span><span class=line><span class=cl>                d-&gt;ht[table].used--;
-</span></span><span class=line><span class=cl>                return he;
-</span></span><span class=line><span class=cl>            }
-</span></span><span class=line><span class=cl>            prevHe = he;
-</span></span><span class=line><span class=cl>            he = he-&gt;next;
-</span></span><span class=line><span class=cl>        }
-</span></span><span class=line><span class=cl>        if (!dictIsRehashing(d)) break;
-</span></span><span class=line><span class=cl>    }
-</span></span><span class=line><span class=cl>    return NULL; /* not found */
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=n>table</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>table</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>table</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>idx</span> <span class=o>=</span> <span class=n>h</span> <span class=o>&amp;</span> <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>sizemask</span><span class=p>;</span> <span class=o>//</span><span class=err>位与运算，找到索引。</span>
+</span></span><span class=line><span class=cl>        <span class=n>he</span> <span class=o>=</span> <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>table</span><span class=p>[</span><span class=n>idx</span><span class=p>];</span> <span class=o>//</span><span class=err>找到键值对</span>
+</span></span><span class=line><span class=cl>        <span class=n>prevHe</span> <span class=o>=</span> <span class=n>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=k>while</span><span class=p>(</span><span class=n>he</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>key</span><span class=o>==</span><span class=n>he</span><span class=o>-&gt;</span><span class=n>key</span> <span class=o>||</span> <span class=n>dictCompareKeys</span><span class=p>(</span><span class=n>d</span><span class=p>,</span> <span class=n>key</span><span class=p>,</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>key</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>                <span class=o>/*</span> <span class=n>Unlink</span> <span class=n>the</span> <span class=n>element</span> <span class=n>from</span> <span class=n>the</span> <span class=n>list</span> <span class=o>*/</span>
+</span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=n>prevHe</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>                    <span class=n>prevHe</span><span class=o>-&gt;</span><span class=n>next</span> <span class=o>=</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                <span class=k>else</span>
+</span></span><span class=line><span class=cl>                    <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>table</span><span class=p>[</span><span class=n>idx</span><span class=p>]</span> <span class=o>=</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>nofree</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>                    <span class=n>dictFreeKey</span><span class=p>(</span><span class=n>d</span><span class=p>,</span> <span class=n>he</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>                    <span class=n>dictFreeVal</span><span class=p>(</span><span class=n>d</span><span class=p>,</span> <span class=n>he</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>                    <span class=n>zfree</span><span class=p>(</span><span class=n>he</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>                <span class=p>}</span>
+</span></span><span class=line><span class=cl>                <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>used</span><span class=o>--</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                <span class=k>return</span> <span class=n>he</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=p>}</span>
+</span></span><span class=line><span class=cl>            <span class=n>prevHe</span> <span class=o>=</span> <span class=n>he</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>he</span> <span class=o>=</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>dictIsRehashing</span><span class=p>(</span><span class=n>d</span><span class=p>))</span> <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>NULL</span><span class=p>;</span> <span class=o>/*</span> <span class=ow>not</span> <span class=n>found</span> <span class=o>*/</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span></code></pre></td></tr></table></div></div><h3 id=查找值>查找值</h3><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
 </span><span class=lnt> 2
 </span><span class=lnt> 3
@@ -318,26 +318,26 @@
 </span><span class=lnt>18
 </span><span class=lnt>19
 </span><span class=lnt>20
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>dictEntry *dictFind(dict *d, const void *key)
-</span></span><span class=line><span class=cl>{
-</span></span><span class=line><span class=cl>    dictEntry *he;
-</span></span><span class=line><span class=cl>    uint64_t h, idx, table;
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=n>dictEntry</span> <span class=o>*</span><span class=n>dictFind</span><span class=p>(</span><span class=n>dict</span> <span class=o>*</span><span class=n>d</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>dictEntry</span> <span class=o>*</span><span class=n>he</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>uint64_t</span> <span class=n>h</span><span class=p>,</span> <span class=n>idx</span><span class=p>,</span> <span class=n>table</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    if (dictSize(d) == 0) return NULL; /* dict is empty */
-</span></span><span class=line><span class=cl>    if (dictIsRehashing(d)) _dictRehashStep(d);
-</span></span><span class=line><span class=cl>    h = dictHashKey(d, key);
-</span></span><span class=line><span class=cl>    for (table = 0; table &lt;= 1; table++) {
-</span></span><span class=line><span class=cl>        idx = h &amp; d-&gt;ht[table].sizemask;
-</span></span><span class=line><span class=cl>        he = d-&gt;ht[table].table[idx];
-</span></span><span class=line><span class=cl>        while(he) {
-</span></span><span class=line><span class=cl>            if (key==he-&gt;key || dictCompareKeys(d, key, he-&gt;key))
-</span></span><span class=line><span class=cl>                return he;
-</span></span><span class=line><span class=cl>            he = he-&gt;next;
-</span></span><span class=line><span class=cl>        }
-</span></span><span class=line><span class=cl>        if (!dictIsRehashing(d)) return NULL;
-</span></span><span class=line><span class=cl>    }
-</span></span><span class=line><span class=cl>    return NULL;
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>dictSize</span><span class=p>(</span><span class=n>d</span><span class=p>)</span> <span class=o>==</span> <span class=mi>0</span><span class=p>)</span> <span class=k>return</span> <span class=n>NULL</span><span class=p>;</span> <span class=o>/*</span> <span class=n>dict</span> <span class=n>is</span> <span class=n>empty</span> <span class=o>*/</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>dictIsRehashing</span><span class=p>(</span><span class=n>d</span><span class=p>))</span> <span class=n>_dictRehashStep</span><span class=p>(</span><span class=n>d</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=n>h</span> <span class=o>=</span> <span class=n>dictHashKey</span><span class=p>(</span><span class=n>d</span><span class=p>,</span> <span class=n>key</span><span class=p>);</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=n>table</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>table</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>table</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>idx</span> <span class=o>=</span> <span class=n>h</span> <span class=o>&amp;</span> <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>sizemask</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=n>he</span> <span class=o>=</span> <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>table</span><span class=p>[</span><span class=n>idx</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>        <span class=k>while</span><span class=p>(</span><span class=n>he</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>key</span><span class=o>==</span><span class=n>he</span><span class=o>-&gt;</span><span class=n>key</span> <span class=o>||</span> <span class=n>dictCompareKeys</span><span class=p>(</span><span class=n>d</span><span class=p>,</span> <span class=n>key</span><span class=p>,</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>key</span><span class=p>))</span>
+</span></span><span class=line><span class=cl>                <span class=k>return</span> <span class=n>he</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=n>he</span> <span class=o>=</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>dictIsRehashing</span><span class=p>(</span><span class=n>d</span><span class=p>))</span> <span class=k>return</span> <span class=n>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>NULL</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span></code></pre></td></tr></table></div></div><h2 id=rehashing>rehashing</h2><p>随着操作的进行，为了使得荷载因子维持在一个合理的范围，我们需要对哈希表进行相应的扩张或缩小。</p><ol><li>如果执行的是扩张操作，那么ht[1]，即第二个哈希表的大小为2，否则为</li><li>将保存在ht[0]中所有的键值对rehashing到第二个哈希表上</li><li>将原来的ht[1]设为ht[0]，释放原来的ht[0]，并准备一个新的哈希表，设为ht[1]</li></ol><div class=highlight><div class=chroma><table class=lntable><tr><td class=lntd><pre tabindex=0 class=chroma><code><span class=lnt> 1
 </span><span class=lnt> 2
 </span><span class=lnt> 3
@@ -362,30 +362,30 @@
 </span><span class=lnt>22
 </span><span class=lnt>23
 </span><span class=lnt>24
-</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-fallback data-lang=fallback><span class=line><span class=cl>static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **existing)
-</span></span><span class=line><span class=cl>{
-</span></span><span class=line><span class=cl>    unsigned long idx, table;
-</span></span><span class=line><span class=cl>    dictEntry *he;
-</span></span><span class=line><span class=cl>    if (existing) *existing = NULL;
+</span></code></pre></td><td class=lntd><pre tabindex=0 class=chroma><code class=language-gdscript3 data-lang=gdscript3><span class=line><span class=cl><span class=k>static</span> <span class=n>long</span> <span class=n>_dictKeyIndex</span><span class=p>(</span><span class=n>dict</span> <span class=o>*</span><span class=n>d</span><span class=p>,</span> <span class=k>const</span> <span class=n>void</span> <span class=o>*</span><span class=n>key</span><span class=p>,</span> <span class=n>uint64_t</span> <span class=nb>hash</span><span class=p>,</span> <span class=n>dictEntry</span> <span class=o>**</span><span class=n>existing</span><span class=p>)</span>
+</span></span><span class=line><span class=cl><span class=p>{</span>
+</span></span><span class=line><span class=cl>    <span class=n>unsigned</span> <span class=n>long</span> <span class=n>idx</span><span class=p>,</span> <span class=n>table</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=n>dictEntry</span> <span class=o>*</span><span class=n>he</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>existing</span><span class=p>)</span> <span class=o>*</span><span class=n>existing</span> <span class=o>=</span> <span class=n>NULL</span><span class=p>;</span>
 </span></span><span class=line><span class=cl>
-</span></span><span class=line><span class=cl>    /* Expand the hash table if needed */
-</span></span><span class=line><span class=cl>    if (_dictExpandIfNeeded(d) == DICT_ERR)
-</span></span><span class=line><span class=cl>        return -1;
-</span></span><span class=line><span class=cl>    for (table = 0; table &lt;= 1; table++) {
-</span></span><span class=line><span class=cl>        idx = hash &amp; d-&gt;ht[table].sizemask;
-</span></span><span class=line><span class=cl>        /* Search if this slot does not already contain the given key */
-</span></span><span class=line><span class=cl>        he = d-&gt;ht[table].table[idx];
-</span></span><span class=line><span class=cl>        while(he) {
-</span></span><span class=line><span class=cl>            if (key==he-&gt;key || dictCompareKeys(d, key, he-&gt;key)) {
-</span></span><span class=line><span class=cl>                if (existing) *existing = he;
-</span></span><span class=line><span class=cl>                return -1;
-</span></span><span class=line><span class=cl>            }
-</span></span><span class=line><span class=cl>            he = he-&gt;next;
-</span></span><span class=line><span class=cl>        }
-</span></span><span class=line><span class=cl>        if (!dictIsRehashing(d)) break;
-</span></span><span class=line><span class=cl>    }
-</span></span><span class=line><span class=cl>    return idx;
-</span></span><span class=line><span class=cl>}
+</span></span><span class=line><span class=cl>    <span class=o>/*</span> <span class=n>Expand</span> <span class=n>the</span> <span class=nb>hash</span> <span class=n>table</span> <span class=k>if</span> <span class=n>needed</span> <span class=o>*/</span>
+</span></span><span class=line><span class=cl>    <span class=k>if</span> <span class=p>(</span><span class=n>_dictExpandIfNeeded</span><span class=p>(</span><span class=n>d</span><span class=p>)</span> <span class=o>==</span> <span class=n>DICT_ERR</span><span class=p>)</span>
+</span></span><span class=line><span class=cl>        <span class=k>return</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=k>for</span> <span class=p>(</span><span class=n>table</span> <span class=o>=</span> <span class=mi>0</span><span class=p>;</span> <span class=n>table</span> <span class=o>&lt;=</span> <span class=mi>1</span><span class=p>;</span> <span class=n>table</span><span class=o>++</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>        <span class=n>idx</span> <span class=o>=</span> <span class=nb>hash</span> <span class=o>&amp;</span> <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>sizemask</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=o>/*</span> <span class=n>Search</span> <span class=k>if</span> <span class=n>this</span> <span class=n>slot</span> <span class=n>does</span> <span class=ow>not</span> <span class=n>already</span> <span class=n>contain</span> <span class=n>the</span> <span class=n>given</span> <span class=n>key</span> <span class=o>*/</span>
+</span></span><span class=line><span class=cl>        <span class=n>he</span> <span class=o>=</span> <span class=n>d</span><span class=o>-&gt;</span><span class=n>ht</span><span class=p>[</span><span class=n>table</span><span class=p>]</span><span class=o>.</span><span class=n>table</span><span class=p>[</span><span class=n>idx</span><span class=p>];</span>
+</span></span><span class=line><span class=cl>        <span class=k>while</span><span class=p>(</span><span class=n>he</span><span class=p>)</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>            <span class=k>if</span> <span class=p>(</span><span class=n>key</span><span class=o>==</span><span class=n>he</span><span class=o>-&gt;</span><span class=n>key</span> <span class=o>||</span> <span class=n>dictCompareKeys</span><span class=p>(</span><span class=n>d</span><span class=p>,</span> <span class=n>key</span><span class=p>,</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>key</span><span class=p>))</span> <span class=p>{</span>
+</span></span><span class=line><span class=cl>                <span class=k>if</span> <span class=p>(</span><span class=n>existing</span><span class=p>)</span> <span class=o>*</span><span class=n>existing</span> <span class=o>=</span> <span class=n>he</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>                <span class=k>return</span> <span class=o>-</span><span class=mi>1</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>            <span class=p>}</span>
+</span></span><span class=line><span class=cl>            <span class=n>he</span> <span class=o>=</span> <span class=n>he</span><span class=o>-&gt;</span><span class=n>next</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>        <span class=p>}</span>
+</span></span><span class=line><span class=cl>        <span class=k>if</span> <span class=p>(</span><span class=o>!</span><span class=n>dictIsRehashing</span><span class=p>(</span><span class=n>d</span><span class=p>))</span> <span class=k>break</span><span class=p>;</span>
+</span></span><span class=line><span class=cl>    <span class=p>}</span>
+</span></span><span class=line><span class=cl>    <span class=k>return</span> <span class=n>idx</span><span class=p>;</span>
+</span></span><span class=line><span class=cl><span class=p>}</span>
 </span></span></code></pre></td></tr></table></div></div></section><nav class="mt-24 flex rounded-lg bg-black/[3%] text-lg dark:bg-white/[8%]"><a class="flex w-1/2 items-center rounded-l-md p-6 pr-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/cmake_notes/><span class=mr-1.5>←</span><span>CMake学习笔记</span></a>
 <a class="ml-auto flex w-1/2 items-center justify-end rounded-r-md p-6 pl-3 font-semibold no-underline hover:bg-black/[2%] dark:hover:bg-white/[3%]" href=https://www.junz.org/post/lambda_in_cpp/><span>C++中lambda表达式基础</span><span class=ml-1.5>→</span></a></nav></article></main><footer class="opaco mx-auto flex h-[4.5rem] max-w-3xl items-center px-8 text-[0.9em] opacity-60"><div class=mr-auto>&copy; 2023
 <a class=link href=https://www.junz.org>Jun's Blog</a></div><a class="link mx-6" href=https://gohugo.io/ rel=noopener target=_blank>Powered by Hugo️️</a>️
